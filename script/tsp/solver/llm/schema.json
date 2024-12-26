@@ -1,0 +1,26 @@
+{
+    "name": "tsp_solution",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "solution": {
+          "type": "array",
+          "description": "巡回セールスマン問題を解決するために辿る経路を表すノードの順序。（要素の重複不可）",
+          "items": {
+            "type": "integer",
+            "description": "解に含まれる場所の識別子または名称。"
+          }
+        },
+        "reasoning": {
+          "type": "string",
+          "description": "解の質を高めるための戦略を出力する（日本語で出力する。）"
+        }
+      },
+      "required": [
+        "solution",
+        "reasoning"
+      ],
+      "additionalProperties": false
+    }
+  }

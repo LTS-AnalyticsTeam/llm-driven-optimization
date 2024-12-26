@@ -1,0 +1,11 @@
+numpy
+pandas
+requests
+flask
+scikit-learn
+matplotlib
+networkx
+pytest
+pyomo
+openai
+black
