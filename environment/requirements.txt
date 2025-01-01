@@ -4,6 +4,7 @@ requests
 flask
 scikit-learn
 matplotlib
+statsmodels
 networkx
 pytest
 pyomo

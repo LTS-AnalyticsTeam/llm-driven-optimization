@@ -117,7 +117,7 @@ class TSP(pyo.ConcreteModel):
         logfile: Path = None,
         timelimit=100,
         mipgap=0,
-        tee=True,
+        tee=False,
     ) -> list[int]:
         """
         ソルバーを呼び出して TSP を解き、訪問順を返す。
@@ -134,11 +134,14 @@ class TSP(pyo.ConcreteModel):
         """
 
         # ソルバーの指定
-        solver = pyo.SolverFactory(solver_name)
+        solver = pyo.SolverFactory("cplex")
         if logfile:
             solver.options["logfile"] = str(logfile)
         solver.options["timelimit"] = timelimit
         solver.options["mip_tolerances_mipgap"] = mipgap
+        solver.options["mip_tolerances_absmipgap"] = mipgap
+        solver.options["emphasis_numerical"] = "yes"  # 数値精度の強調を有効にする
+        # solver.options["mip_emphasis"] = "2"  # 許容性より最適性を重視します
 
         # 求解
         solver.solve(self, tee=tee)

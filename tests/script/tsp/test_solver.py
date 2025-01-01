@@ -1,10 +1,10 @@
 import pytest
 from pathlib import Path
-from tsp.simulator import define_problem, obj_func, vizualize
+from tsp.simulator import define_problem, obj_func, vizualize, is_valid_tour
 from tsp.solver import nn, fi, milp, llm
 
 
-N = 20
+N = 30
 OUTPUT_DIR = Path(__file__).parent / "__output__" / "solver"
 OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 
@@ -19,12 +19,14 @@ def test_nn():
     g = define_problem(N)
     tour = nn.solve(g)
     show_result(g, tour, f"{OUTPUT_DIR}/tsp_nn_solution.png")
+    assert is_valid_tour(g, tour)
 
 
 def test_fi():
     g = define_problem(N)
     tour = fi.solve(g)
     show_result(g, tour, f"{OUTPUT_DIR}/tsp_fi_solution.png")
+    assert is_valid_tour(g, tour)
 
 
 def test_milp():
@@ -38,9 +40,11 @@ def test_milp():
         tee=True,
     )
     show_result(g, tour, f"{OUTPUT_DIR}/tsp_milp_solution.png")
+    assert is_valid_tour(g, tour)
 
 
 def test_llm():
     g = define_problem(N)
     tour = llm.solve(g)
     show_result(g, tour, f"{OUTPUT_DIR}/tsp_llm_solution.png")
+    assert is_valid_tour(g, tour)

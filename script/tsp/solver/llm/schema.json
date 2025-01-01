@@ -6,7 +6,7 @@
       "properties": {
         "solution": {
           "type": "array",
-          "description": "巡回セールスマン問題を解決するために辿る経路を表すノードの順序。（要素の重複不可）",
+          "description": "巡回セールスマン問題を解決するために辿る経路を表すノードの順序。（条件1：要素の重複不可、条件2：0~nの要素を全て含むこと）",
           "items": {
             "type": "integer",
             "description": "解に含まれる場所の識別子または名称。"

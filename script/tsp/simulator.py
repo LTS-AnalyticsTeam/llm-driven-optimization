@@ -1,4 +1,5 @@
 import networkx as nx
+import numpy as np
 import matplotlib.pyplot as plt
 import random
 
@@ -32,6 +33,16 @@ def define_problem(nodes_num: int = 10, seed: int = 0) -> nx.Graph:
     return g
 
 
+def is_valid_tour(g: nx.Graph, tour: list[int]) -> tuple[bool, str]:
+    """ツアーが有効であるかを判定します。"""
+    n = len(g.nodes)
+    if len(tour) != n:
+        return False, "ツアーの長さが不正です。"
+    if set(range(n)) != set(tour):
+        return False, "ツアーの訪問ノードに重複があり不正です。"
+    return True, "このツアーは有効です。"
+
+
 def obj_func(g: nx.Graph, tour: list[int]) -> float:
     """
     グラフとツアー（頂点の訪問順序）を基に合計移動距離を計算して返します。
@@ -43,11 +54,18 @@ def obj_func(g: nx.Graph, tour: list[int]) -> float:
     Returns:
         float: ツアーの総移動距離
     """
+    try:
+        assert is_valid_tour(g, tour)
+    except:
+        return np.nan
+
     total_distance = 0.0
     for i in range(len(tour) - 1):
         u = tour[i]
         v = tour[i + 1]
         total_distance += g[u][v]["weight"]
+    # 最後の頂点から最初の頂点への移動距離を加算
+    total_distance += g[tour[-1]][tour[0]]["weight"]
     return total_distance
 
 
@@ -74,19 +92,21 @@ def vizualize(g: nx.Graph, tour: list[int] = None, path: str = "tsp.png") -> Non
         path (str, optional): 出力先ファイルパス
     """
     # 求まったツアーを描画(ルートを赤線で描画)
-    plt.figure(figsize=(8, 8))
+    plt.figure(figsize=(10, 10), tight_layout=True)
     pos = get_pos(g)
     nx.draw_networkx_nodes(g, pos, node_size=500, node_color="lightblue")
-    nx.draw_networkx_labels(g, pos, font_size=10)
+    nx.draw_networkx_labels(g, pos, font_size=12, font_weight="bold")
 
     # 全エッジ(灰色)を描画
-    nx.draw_networkx_edges(g, pos, alpha=0.5, edge_color="gray")
+    # nx.draw_networkx_edges(g, pos, alpha=0.5, edge_color="gray")
     if tour is not None:
         # 求まったツアーをエッジリストに変換
         tour_edges = list(zip(tour[:-1], tour[1:])) + [(tour[-1], tour[0])]
         # ツアーエッジを赤色で上書き描画
         nx.draw_networkx_edges(g, pos, edgelist=tour_edges, edge_color="red", width=2)
 
-    plt.axis("off")
+    plt.axis("on")
+    plt.tick_params(labelbottom=True, labelleft=True, bottom=True, left=True)
     plt.savefig(path)
+    plt.close()
     return None
