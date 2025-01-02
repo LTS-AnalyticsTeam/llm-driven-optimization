@@ -13,7 +13,7 @@ def test_run_all_solver():
 def test_summarize():
     with open(OUTPUT_DIR / "result.json", "r", encoding="utf-8") as f:
         result = json.load(f)
-    summary = summarize(result)
+    summary = summarize(result, ["nn", "fi", "milp", "gpt-4o", "o1"])
     with open(OUTPUT_DIR / "summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)
 

@@ -10,6 +10,86 @@ import statsmodels.stats.weightstats as sw
 
 Result = dict[int, dict[str, dict[str, any]]]
 Summary = dict[str, dict[str, any]]
+"""
+Result は以下のような構造を想定している。
+```json
+{
+    "0": {
+        "nn": {
+            "tour": [0,11,19,5,18,3,7,2,1,12,17,4,13,10,6,16,15,9,14,8],
+            "obj_value": 3.3179157402627433,
+            "is_valid": true
+        },
+        "fi": {
+            "tour": [7,3,18,5,19,11,0,14,8,9,15,16,6,10,13,4,2,1,12,17],
+            "obj_value": 2.9766692741699385,
+            "is_valid": true
+        },
+        "milp": {
+            "tour": [0,19,11,5,18,3,7,17,12,1,2,4,13,10,6,16,15,9,8,14],
+            "obj_value": 2.9728338167860118,
+            "is_valid": true
+        },
+        "gpt-4o": {
+            "tour": [8,9,14,0,11,5,19,3,18,7,12,17,1,2,4,13,10,6,16,15],
+            "obj_value": 3.5283091857677995,
+            "is_valid": true
+        },
+        "o1": {
+            "tour": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19],
+            "obj_value": 9.43642130406245,
+            "is_valid": true
+        }
+    },
+    "1": {
+        "nn": {...},
+        "fi": {...},
+        "milp": {...},
+        "gpt-4o": {...},
+        "o1":{...}
+    },
+    "2": {...},
+    "3": {...},
+    ...
+}
+```
+
+Summary は以下のような構造を想定している。
+```json
+{
+  "nn": {
+    "gap_mean": 16.776245677421088,
+    "gap_95%_CI": [0.8497677366138063, 32.70272361822837],
+    "validation_success_rate": 100.0,
+    "gap_zero_rate": 0.0
+  },
+  "fi": {
+    "gap_mean": 3.2077061265450113,
+    "gap_95%_CI": [-2.1113909721030697, 8.526803225193092],
+    "validation_success_rate": 100.0,
+    "gap_zero_rate": 20.0
+  },
+  "milp": {
+    "gap_mean": 0.0,
+    "gap_95%_CI": [0.0, 0.0],
+    "validation_success_rate": 100.0,
+    "gap_zero_rate": 100.0
+  },
+  "gpt-4o": {
+    "gap_mean": 23.901450929801783,
+    "gap_95%_CI": [4.804552412408558, 42.99834944719501],
+    "validation_success_rate": 100.0,
+    "gap_zero_rate": 0.0
+  },
+  "o1": {
+    "gap_mean": 198.4170221655523,
+    "gap_95%_CI": [169.74708465947012, 227.0869596716345],
+    "validation_success_rate": 100.0,
+    "gap_zero_rate": 0.0
+  }
+}
+```
+"""
 
 
 def run_all_solver(problem_size: int, sample_num: int, save_dir: Path) -> Result:
@@ -39,7 +119,7 @@ def run_all_solver(problem_size: int, sample_num: int, save_dir: Path) -> Result
     return result
 
 
-def summarize(result: Result) -> Summary:
+def summarize(result: Result, solvers: list[str]) -> Summary:
     """
     各ソルバの結果を集計し、以下の情報を返す関数。
       - gap_mean
@@ -47,9 +127,6 @@ def summarize(result: Result) -> Summary:
       - validation_success_rate
       - gap_zero_rate
     """
-    # 対象とするソルバ一覧
-    solvers = ["nn", "fi", "milp", "gpt-4o", "o1"]
-
     # 各ソルバごとに目的関数値とGAPを溜めるリストを用意
     obj_values = {solver: [] for solver in solvers}
     gap_percentages = {solver: [] for solver in solvers if solver != "milp"}
@@ -128,7 +205,7 @@ def convert_to_pandas(summary_dict: dict[int, Summary]) -> pd.DataFrame:
     summarize() で返された結果を集約した辞書（複数の problem_size 分）を
     pandas.DataFrame に変換する。
 
-    data は以下のような構造を想定：
+    summary_dict は以下のような構造を想定：
     {
       10: {
         "nn": {
@@ -191,7 +268,7 @@ def main(problem_sizes: list[int], sample_num: int, save_dir: Path):
         save_dir_this_loop = save_dir / f"problem_size_{problem_size}"
         save_dir_this_loop.mkdir(exist_ok=True, parents=True)
         result = run_all_solver(problem_size, sample_num, save_dir_this_loop)
-        summary = summarize(result)
+        summary = summarize(result, ["nn", "fi", "milp", "gpt-4o", "o1"])
         summaries[problem_size] = summary
 
     summaries_df = convert_to_pandas(summaries)
