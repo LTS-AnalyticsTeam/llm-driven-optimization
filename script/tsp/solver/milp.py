@@ -1,6 +1,7 @@
 import networkx as nx
 import pyomo.environ as pyo
 from pathlib import Path
+import cplex
 
 
 class TSP(pyo.ConcreteModel):
@@ -36,7 +37,7 @@ class TSP(pyo.ConcreteModel):
 
         # グラフやノード情報などを保持
         self.g = g
-        self.start = 0
+        self.start = g.graph["start"]
         self.N = len(g.nodes)
 
         # 定義メソッドを順に呼び出す
@@ -113,8 +114,7 @@ class TSP(pyo.ConcreteModel):
 
     def solve(
         self,
-        solver_name="cplex",
-        logfile: Path = None,
+        log_dir: Path = Path("/tmp/cplex_log"),
         timelimit=100,
         mipgap=0,
         tee=False,
@@ -123,7 +123,6 @@ class TSP(pyo.ConcreteModel):
         ソルバーを呼び出して TSP を解き、訪問順を返す。
 
         Args:
-            solver_name (str): 使用するソルバー名 (例: "cplex", "gurobi", "glpk" など)
             logfile (Path): ログファイルの出力先
             timelimit (int): ソルバーの制限時間 (秒)
             mipgap (float): MIP Gap
@@ -135,30 +134,47 @@ class TSP(pyo.ConcreteModel):
 
         # ソルバーの指定
         solver = pyo.SolverFactory("cplex")
-        if logfile:
-            solver.options["logfile"] = str(logfile)
+        if log_dir:
+            solver.options["logfile"] = str(log_dir / "tsp_milp.log")
         solver.options["timelimit"] = timelimit
         solver.options["mip_tolerances_mipgap"] = mipgap
         solver.options["mip_tolerances_absmipgap"] = mipgap
         solver.options["emphasis_numerical"] = "yes"  # 数値精度の強調を有効にする
-        # solver.options["mip_emphasis"] = "2"  # 許容性より最適性を重視します
 
-        # 求解
         solver.solve(self, tee=tee)
+        self.display(filename=log_dir / "tsp_display.log")  # ログの保存
 
-        # 解の復元
-        next_node = {}
-        for i, j in self.edges:
-            if pyo.value(self.x[i, j]) > 0.5:
-                next_node[i] = j
+        try:
+            # 解の復元
+            next_node = {}
+            for i, j in self.edges:
+                if pyo.value(self.x[i, j]) > 0.5:
+                    next_node[i] = j
 
-        # ツアーを復元する
-        tour = [self.start]
-        current = self.start
-        while True:
-            current = next_node[current]
-            if current == self.start:
-                break
-            tour.append(current)
+            # ツアーを復元する
+            tour = [self.start]
+            current = self.start
+            while True:
+                current = next_node[current]
+                if current == self.start:
+                    break
+                tour.append(current)
 
-        return tour
+            return tour
+
+        except:
+            # 求解
+            solver = pyo.SolverFactory("cplex_persistent")
+            solver.set_instance(self)
+            solver.solve(self, tee=True)
+            cplex_instance: cplex.Cplex = solver._solver_model
+            cplex_instance.write(str(log_dir / "tsp_model.lp"))
+            # IISの解析
+            cplex_instance: cplex.Cplex = solver._solver_model
+            cplex_instance.conflict.refine()
+            cplex_instance.conflict.write(str(log_dir / "tsp_conflict_iis.ilp"))
+            # エラー報告
+            status = cplex_instance.solution.get_status()
+            raise Exception(
+                f"Model is infeasible. Solution status {status}: {cplex_instance.solution.status[status]}"
+            )

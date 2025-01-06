@@ -17,7 +17,6 @@ def define_problem(
     # 時間枠制約と順序制約のデフォルト値の設定（スタートは0）
     for node in g.nodes:
         g.nodes[node]["time_window"] = None
-    g.nodes[0]["time_window"] = (0, 0)
     g.graph["precedence_pairs"] = []
 
     if time_windows_constraints:
@@ -25,15 +24,18 @@ def define_problem(
         tour = tsp.solver.fi.solve(g)
         obj_value = tsp.simulator.obj_func(g, tour)
         time_window_width = obj_value / time_window_num
-        for i, node in enumerate(random.sample(list(g.nodes), time_window_num)):
+        optional_nodes = list(g.nodes)[1:]  # スタート地点0は除く
+        selected_nodes = random.sample(optional_nodes, time_window_num)
+        for i, node in enumerate(selected_nodes):
             g.nodes[node]["time_window"] = (
-                i * time_window_width,
+                0,
                 (i + 1) * time_window_width,
             )
 
     if precedence_constraints:
         precedence_pair_num = round(nodes_num * 3 / 10)
-        selected_nodes = random.sample(list(g.nodes), precedence_pair_num * 2)
+        optional_nodes = list(g.nodes)[1:]  # スタート地点0は除く
+        selected_nodes = random.sample(optional_nodes, precedence_pair_num * 2)
         g.graph["precedence_pairs"] = [
             {"before": selected_nodes[i], "after": selected_nodes[i + 1]}
             for i in range(0, precedence_pair_num * 2, 2)
@@ -42,7 +44,7 @@ def define_problem(
     return g
 
 
-def is_valid_tour(g: nx.Graph, tour: list[int]) -> tuple[bool, str]:
+def is_valid_tour(g: nx.Graph, tour: list[int], log=False) -> tuple[bool, str]:
     """ツアーが有効であるかを判定します。"""
     # 決定変数のチェック
     n = len(g.nodes)
@@ -51,24 +53,37 @@ def is_valid_tour(g: nx.Graph, tour: list[int]) -> tuple[bool, str]:
     if set(range(n)) != set(tour):
         return False, "ツアーの訪問ノードに重複があり不正です。"
 
+    # スタート地点のチェック
+    if tour[0] != g.graph["start"]:
+        return False, "スタート地点が不正です。"
+
     # 時間枠制約のチェック
+    if log:
+        print(">>> time_windowのチェック")
     total_time = 0
-    for i in g.nodes:
-        if i != 0:
-            total_time += g[tour[i - 1]][tour[i]]["weight"]
-        time_window = g.nodes[tour[i]]["time_window"]
+    for u, v in zip(tour[:-1], tour[1:]):
+        total_time += g[u][v]["weight"]
+        time_window = g.nodes[v]["time_window"]
         if time_window is not None:
             start, end = time_window
             if start <= total_time <= end:
-                pass
+                if log:
+                    print(f"{v}: {start} <= {total_time} <= {end}")
             else:
-                return False, f"ノード {tour[i]} の時間枠を超過しています。"
+                return False, f"ノード {tour[v]} の時間枠を超過しています。"
 
     # 順序制約のチェック
+    if log:
+        print(">>> precedence_pairsのチェック")
     for pair in g.graph["precedence_pairs"]:
         before_idx = tour.index(pair["before"])
         after_idx = tour.index(pair["after"])
-        if before_idx > after_idx:
+        if before_idx < after_idx:
+            if log:
+                print(
+                    f"node[{pair['before']}](=index: {before_idx}) -> node[{pair['after']}](=index: {after_idx})"
+                )
+        else:
             return (
                 False,
                 f"ノード {pair['before']} はノード {pair['after']} より先に訪問される必要があります。",

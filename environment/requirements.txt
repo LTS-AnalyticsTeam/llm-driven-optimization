@@ -10,3 +10,4 @@ pytest
 pyomo
 openai
 black
+cplex==22.1.2.0

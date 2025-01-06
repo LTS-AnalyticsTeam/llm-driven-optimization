@@ -19,32 +19,37 @@ def test_nn():
     g = define_problem(N)
     tour = nn.solve(g)
     show_result(g, tour, f"{OUTPUT_DIR}/tsp_nn_solution.png")
-    assert is_valid_tour(g, tour)
+    is_valid, message = is_valid_tour(g, tour)
+    assert is_valid, message
 
 
 def test_fi():
     g = define_problem(N)
     tour = fi.solve(g)
     show_result(g, tour, f"{OUTPUT_DIR}/tsp_fi_solution.png")
-    assert is_valid_tour(g, tour)
+    is_valid, message = is_valid_tour(g, tour)
+    assert is_valid, message
 
 
 def test_milp():
+    milp_logs_dir = OUTPUT_DIR / "milp_logs"
+    milp_logs_dir.mkdir(exist_ok=True, parents=True)
     g = define_problem(N)
     model = milp.TSP(g)
     tour = model.solve(
-        solver_name="cplex",
-        logfile=f"{OUTPUT_DIR}/tsp_milp_cplex.log",
+        log_dir=milp_logs_dir,
         timelimit=60,
         mipgap=0.0,
         tee=True,
     )
     show_result(g, tour, f"{OUTPUT_DIR}/tsp_milp_solution.png")
-    assert is_valid_tour(g, tour)
+    is_valid, message = is_valid_tour(g, tour)
+    assert is_valid, message
 
 
 def test_llm():
     g = define_problem(N)
     tour = llm.solve(g)
     show_result(g, tour, f"{OUTPUT_DIR}/tsp_llm_solution.png")
-    assert is_valid_tour(g, tour)
+    is_valid, message = is_valid_tour(g, tour)
+    assert is_valid, message

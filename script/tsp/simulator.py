@@ -30,6 +30,10 @@ def define_problem(nodes_num: int = 10, seed: int = 0) -> nx.Graph:
             (g.nodes[u]["x"] - g.nodes[v]["x"]) ** 2
             + (g.nodes[u]["y"] - g.nodes[v]["y"]) ** 2
         ) ** (1 / 2)
+
+    # スタート地点の設定
+    g.graph["start"] = 0
+
     return g
 
 
