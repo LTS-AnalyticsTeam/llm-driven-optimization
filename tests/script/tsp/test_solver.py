@@ -1,4 +1,5 @@
 import pytest
+import traceback
 from pathlib import Path
 from tsp.simulator import Simulator
 from tsp.solver import nn, fi, milp, llm
@@ -45,6 +46,17 @@ def test_milp():
     show_result(sim, tour, f"{OUTPUT_DIR}/tsp_milp_solution.png")
     is_valid, message = sim.is_valid_tour(tour)
     assert is_valid, message
+
+
+def test_milp_analyze_conflict():
+    milp_logs_dir = OUTPUT_DIR / "milp_logs"
+    milp_logs_dir.mkdir(exist_ok=True, parents=True)
+    sim = Simulator(nodes_num=N, seed=0)
+    model = milp.TSP(sim.g)
+    try:
+        model.analyze_conflict(milp_logs_dir)
+    except Exception as e:
+        traceback.print_exc()
 
 
 def test_llm():

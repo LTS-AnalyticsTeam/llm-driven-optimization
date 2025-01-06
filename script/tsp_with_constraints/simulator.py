@@ -21,11 +21,7 @@ class SimulatorExp(Simulator):
         self.nodes_num = nodes_num
         self._define_problem()
 
-    def _define_problem(
-        self,
-        nodes_num: int = 10,
-        seed: int = 0,
-    ) -> None:
+    def _define_problem(self) -> None:
         super()._define_problem()
 
         # スタート地点の設定
@@ -37,7 +33,7 @@ class SimulatorExp(Simulator):
         self.g.graph["precedence_pairs"] = []
 
         if self.time_windows_constraints:
-            time_window_num = round(nodes_num / 10) * 3
+            time_window_num = round(self.nodes_num / 10) * 3
             tour = tsp.solver.fi.solve(self.g)
             obj_value = self.obj_func(tour)
             time_window_width = obj_value / time_window_num
@@ -50,7 +46,7 @@ class SimulatorExp(Simulator):
                 )
 
         if self.precedence_constraints:
-            precedence_pair_num = round(nodes_num * 3 / 10)
+            precedence_pair_num = round(self.nodes_num * 3 / 10)
             optional_nodes = list(self.g.nodes)[1:]  # スタート地点0は除く
             selected_nodes = random.sample(optional_nodes, precedence_pair_num * 2)
             self.g.graph["precedence_pairs"] = [
