@@ -1,4 +1,5 @@
 from tsp.solver.llm import LLMSolver
+from tsp.simulator import Simulator
 import networkx as nx
 from pathlib import Path
 from tqdm import tqdm
@@ -6,23 +7,23 @@ from tqdm import tqdm
 
 class LLMSolverExp(LLMSolver):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, sim: Simulator):
+        super().__init__(sim)
         self.TMP_DIR = Path(__file__).parent / "__tmp__"
         self.TMP_DIR.mkdir(exist_ok=True, parents=True)
 
-    def _get_system_prompt(self, g: nx.Graph) -> list[dict]:
-        messages = super()._get_system_prompt(g)
-        start_node = g.graph["start"]
+    def _get_system_prompt(self) -> list[dict]:
+        messages = super()._get_system_prompt()
+        start_node = self.sim.g.graph["start"]
         time_windows = {
             f"Node-{n}": (
-                round(g.nodes[n]["time_window"][0], self.ROUND_DIGITS),
-                round(g.nodes[n]["time_window"][1], self.ROUND_DIGITS),
+                round(self.sim.g.nodes[n]["time_window"][0], self.ROUND_DIGITS),
+                round(self.sim.g.nodes[n]["time_window"][1], self.ROUND_DIGITS),
             )
-            for n in g.nodes
-            if g.nodes[n]["time_window"] is not None
+            for n in self.sim.g.nodes
+            if self.sim.g.nodes[n]["time_window"] is not None
         }
-        precedence_pairs = g.graph["precedence_pairs"]
+        precedence_pairs = self.sim.g.graph["precedence_pairs"]
         messages[0]["content"].append(
             {
                 "type": "text",

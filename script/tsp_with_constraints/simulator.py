@@ -7,18 +7,18 @@ import random
 
 
 class SimulatorExp(Simulator):
+
+    time_windows_constraints: bool = False
+    precedence_constraints: bool = False
+
     def __init__(
         self,
         nodes_num: int = 10,
         seed: int = 0,
-        time_windows_constraints: bool = False,
-        precedence_constraints: bool = False,
     ) -> None:
         random.seed(seed)
         self.seed = seed
         self.nodes_num = nodes_num
-        self.time_windows_constraints = time_windows_constraints
-        self.precedence_constraints = precedence_constraints
         self._define_problem()
 
     def _define_problem(

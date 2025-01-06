@@ -109,10 +109,13 @@ def run_all_solver(problem_size: int, sample_num: int, save_dir: Path) -> Result
             "o1": llm.LLMSolver.solve(sim, iter_num=1, llm_model="o1"),
         }
         for k, tour in tours.items():
+            obj_value = sim.obj_func(tour)
+            is_valid, messeage = sim.is_valid_tour(tour)
             result[i][k] = {
                 "tour": tour,
-                "obj_value": sim.obj_func(tour),
-                "is_valid": sim.is_valid_tour(tour)[0],
+                "obj_value": obj_value,
+                "is_valid": is_valid,
+                "messeage": messeage,
             }
     with open(save_dir / "result.json", "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)

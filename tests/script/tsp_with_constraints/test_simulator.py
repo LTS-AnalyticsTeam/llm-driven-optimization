@@ -9,9 +9,9 @@ OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 
 
 def test_simulator():
-    sim = SimulatorExp(
-        nodes_num=10, seed=0, time_windows_constraints=True, precedence_constraints=True
-    )
+    SimulatorExp.time_windows_constraints = True
+    SimulatorExp.precedence_constraints = True
+    sim = SimulatorExp(nodes_num=10, seed=0)
     sim.vizualize_nodes(path=f"{OUTPUT_DIR}/tsp_problem.png")
     tour = list(sim.g.nodes)
     sim.vizualize(tour, path=f"{OUTPUT_DIR}/tsp_solution.png")
@@ -24,11 +24,11 @@ def test_simulator():
 
 @pytest.mark.parametrize("nodes_num", [10, 20, 50])
 def test_is_valid_tour(nodes_num):
+    SimulatorExp.time_windows_constraints = False
+    SimulatorExp.precedence_constraints = False
     sim = SimulatorExp(
         nodes_num=nodes_num,
         seed=0,
-        time_windows_constraints=False,
-        precedence_constraints=False,
     )
     tour = list(sim.g.nodes)
     assert sim.is_valid_tour(tour)[0] == True
@@ -64,9 +64,9 @@ def test_is_valid_tour(nodes_num):
 
 
 def test_obj_func():
-    sim = SimulatorExp(
-        nodes_num=7, seed=0, time_windows_constraints=True, precedence_constraints=True
-    )
+    SimulatorExp.time_windows_constraints = True
+    SimulatorExp.precedence_constraints = True
+    sim = SimulatorExp(nodes_num=7, seed=0)
     # 任意の重み設定（すべての辺を1.0に設定）
     for u in sim.g.nodes:
         for v in sim.g.nodes:
