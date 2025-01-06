@@ -14,7 +14,10 @@ def define_problem(
     random.seed(seed)
     g = tsp.simulator.define_problem(nodes_num, seed)
 
-    # 時間枠制約と順序制約のデフォルト値の設定（スタートは0）
+    # スタート地点の設定
+    g.graph["start"] = 0
+
+    # 時間枠制約と順序制約のデフォルト値の設定
     for node in g.nodes:
         g.nodes[node]["time_window"] = None
     g.graph["precedence_pairs"] = []

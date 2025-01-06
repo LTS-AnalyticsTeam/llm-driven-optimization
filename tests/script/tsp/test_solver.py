@@ -49,7 +49,7 @@ def test_milp():
 
 def test_llm():
     g = define_problem(N)
-    tour = llm.solve(g)
+    tour = llm.LLMSolver.solve(g, iter_num=1, llm_model="gpt-4o")
     show_result(g, tour, f"{OUTPUT_DIR}/tsp_llm_solution.png")
     is_valid, message = is_valid_tour(g, tour)
     assert is_valid, message

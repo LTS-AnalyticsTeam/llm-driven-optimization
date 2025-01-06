@@ -105,8 +105,8 @@ def run_all_solver(problem_size: int, sample_num: int, save_dir: Path) -> Result
             "nn": nn.solve(g),
             "fi": fi.solve(g),
             "milp": milp_model.solve(),
-            "gpt-4o": llm.solve(g, iter_num=1, llm_model="gpt-4o"),
-            "o1": llm.solve(g, iter_num=1, llm_model="o1"),
+            "gpt-4o": llm.LLMSolver.solve(g, iter_num=1, llm_model="gpt-4o"),
+            "o1": llm.LLMSolver.solve(g, iter_num=1, llm_model="o1"),
         }
         for k, tour in tours.items():
             result[i][k] = {

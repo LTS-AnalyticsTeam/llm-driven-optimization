@@ -1,1 +1,1 @@
-from .main import solve
+from .main import *
