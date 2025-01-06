@@ -1,8 +1,8 @@
-import tsp
+from tsp.solver.milp import TSP
 import pyomo.environ as pyo
 
 
-class TSP(tsp.solver.milp.TSP):
+class TSPExp(TSP):
     """TSP with time windows and precedence constraints."""
 
     def _define_params(self):
@@ -18,7 +18,7 @@ class TSP(tsp.solver.milp.TSP):
     def _define_constraints(self):
         super()._define_constraints()
 
-        def _arrival_time_rule(m: TSP, i, j):
+        def _arrival_time_rule(m: TSPExp, i, j):
             if j == m.start:
                 return pyo.Constraint.Skip
             else:

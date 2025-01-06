@@ -37,7 +37,7 @@ class TSP(pyo.ConcreteModel):
 
         # グラフやノード情報などを保持
         self.g = g
-        self.start = g.graph["start"]
+        self.start = 0
         self.N = len(g.nodes)
 
         # 定義メソッドを順に呼び出す
@@ -131,11 +131,10 @@ class TSP(pyo.ConcreteModel):
         Returns:
             list[int]: TSP の訪問順序 (例: [0, 2, 5, 1, 4, 3])
         """
-
+        log_dir.mkdir(exist_ok=True, parents=True)
         # ソルバーの指定
         solver = pyo.SolverFactory("cplex")
-        if log_dir:
-            solver.options["logfile"] = str(log_dir / "tsp_milp.log")
+        solver.options["logfile"] = str(log_dir / "tsp_milp.log")
         solver.options["timelimit"] = timelimit
         solver.options["mip_tolerances_mipgap"] = mipgap
         solver.options["mip_tolerances_absmipgap"] = mipgap

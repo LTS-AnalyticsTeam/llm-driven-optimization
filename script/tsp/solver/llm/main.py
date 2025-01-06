@@ -1,4 +1,4 @@
-from tsp.simulator import obj_func, vizualize, is_valid_tour
+from tsp.simulator import Simulator
 import networkx as nx
 from openai import OpenAI
 from pathlib import Path
@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 
 class LLMSolver:
 
-    def __init__(self):
+    def __init__(self, sim: Simulator):
+        self.sim = sim
         self.TMP_DIR = Path(__file__).parent / "__tmp__"
         self.TMP_DIR.mkdir(exist_ok=True, parents=True)
         self.ENV_PATH = Path(__file__).parent / ".env"
@@ -67,12 +68,12 @@ class LLMSolver:
             tour.pop()
         return tour, reasoning
 
-    def _write_result(self, i, g, tour, reasoning):
+    def _write_result(self, i, tour, reasoning):
         result = (
             f"------\n"
             f"ツアー（決定変数）: {tour}\n"
-            f"ツアーの妥当性: {is_valid_tour(g, tour)}\n"
-            f"目的関数の値: {round(obj_func(g, tour), self.ROUND_DIGITS)}\n"
+            f"ツアーの妥当性: {self.sim.is_valid_tour(tour)}\n"
+            f"目的関数の値: {round(self.sim.obj_func(tour), self.ROUND_DIGITS)}\n"
             f"求解戦略: {reasoning}\n"
             f"------\n"
         )
@@ -80,19 +81,20 @@ class LLMSolver:
             self.TMP_DIR / f"result_tsp_solution_{i}.txt", "w", encoding="utf-8"
         ) as f:
             f.write(result)
-        vizualize(g, tour, path=self.TMP_DIR / f"vizual_tsp_solution_{i}.png")
+        self.sim.vizualize(tour, path=self.TMP_DIR / f"vizual_tsp_solution_{i}.png")
         return result
 
-    def _get_system_prompt(self, g: nx.Graph):
+    def _get_system_prompt(self):
         node_coords = {
             n: (
-                round(g.nodes[n]["x"], self.ROUND_DIGITS),
-                round(g.nodes[n]["y"], self.ROUND_DIGITS),
+                round(self.sim.g.nodes[n]["x"], self.ROUND_DIGITS),
+                round(self.sim.g.nodes[n]["y"], self.ROUND_DIGITS),
             )
-            for n in g.nodes
+            for n in self.sim.g.nodes
         }
         distances = {
-            (u, v): round(g[u][v]["weight"], self.ROUND_DIGITS) for (u, v) in g.edges
+            (u, v): round(self.sim.g[u][v]["weight"], self.ROUND_DIGITS)
+            for (u, v) in self.sim.g.edges
         }
 
         # TSP問題設定のシステムプロンプト
@@ -108,12 +110,12 @@ class LLMSolver:
         ]
         return messages
 
-    def _initalize_message(self, g: nx.Graph) -> list[dict]:
-        messages = self._get_system_prompt(g)
+    def _initalize_message(self) -> list[dict]:
+        messages = self._get_system_prompt()
 
         # 問題の可視化
         tsp_img_path = self.TMP_DIR / f"vizual_tsp_problem.png"
-        vizualize(g, path=tsp_img_path)
+        self.sim.vizualize_nodes(path=tsp_img_path)
 
         # sysmtemプロンプトに画像を入力することができないため、ユーザプロンプトで画像を入力
         messages += [
@@ -135,19 +137,17 @@ class LLMSolver:
         ]
         return messages
 
-    def _solve(
-        self, g: nx.Graph, iter_num: int = 5, llm_model: str = "gpt-4o"
-    ) -> list[int]:
+    def _solve(self, iter_num: int = 5, llm_model: str = "gpt-4o") -> list[int]:
         if llm_model == "o1":
-            return list(g.nodes)
+            return list(self.sim.g.nodes)
 
         progress_bar = tqdm(total=iter_num + 1, desc="Loop LLM Solver", leave=False)
         i = 0
-        messages = self._initalize_message(g)
+        messages = self._initalize_message()
         tour, reasoning = self._solve_by_llm(
             messages, llm_model, self.TMP_DIR / f"prompt_log_{i}.txt"
         )
-        result = self._write_result(i, g, tour, reasoning)
+        result = self._write_result(i, tour, reasoning)
         progress_bar.update(1)
 
         messages += [
@@ -180,13 +180,13 @@ class LLMSolver:
             tour, reasoning = self._solve_by_llm(
                 messages, llm_model, self.TMP_DIR / f"prompt_log_{i}.txt"
             )
-            result = self._write_result(i, g, tour, reasoning)
+            result = self._write_result(i, tour, reasoning)
             progress_bar.update(1)
 
         return tour
 
     @classmethod
-    def solve(cls, g: nx.Graph, iter_num: int = 5, llm_model: str = "gpt-4o"):
-        self = cls()
-        tour = self._solve(g, iter_num, llm_model)
+    def solve(cls, sim: Simulator, iter_num: int = 5, llm_model: str = "gpt-4o"):
+        self = cls(sim)
+        tour = self._solve(iter_num, llm_model)
         return tour

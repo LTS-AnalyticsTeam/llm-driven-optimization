@@ -1,5 +1,5 @@
 from .solver import nn, fi, milp, llm
-from tsp.simulator import define_problem, obj_func, is_valid_tour
+from tsp.simulator import Simulator
 import json
 from tqdm import tqdm
 from pathlib import Path
@@ -99,20 +99,20 @@ def run_all_solver(problem_size: int, sample_num: int, save_dir: Path) -> Result
     result = {}
     for i in tqdm(range(sample_num), desc="Loop Sampling", leave=False):
         result[i] = {}
-        g = define_problem(problem_size, seed=i)
-        milp_model = milp.TSP(g)
+        sim = Simulator(problem_size, seed=i)
+        milp_model = milp.TSP(sim.g)
         tours = {
-            "nn": nn.solve(g),
-            "fi": fi.solve(g),
+            "nn": nn.solve(sim.g),
+            "fi": fi.solve(sim.g),
             "milp": milp_model.solve(),
-            "gpt-4o": llm.LLMSolver.solve(g, iter_num=1, llm_model="gpt-4o"),
-            "o1": llm.LLMSolver.solve(g, iter_num=1, llm_model="o1"),
+            "gpt-4o": llm.LLMSolver.solve(sim, iter_num=1, llm_model="gpt-4o"),
+            "o1": llm.LLMSolver.solve(sim, iter_num=1, llm_model="o1"),
         }
         for k, tour in tours.items():
             result[i][k] = {
                 "tour": tour,
-                "obj_value": obj_func(g, tour),
-                "is_valid": is_valid_tour(g, tour)[0],
+                "obj_value": sim.obj_func(tour),
+                "is_valid": sim.is_valid_tour(tour)[0],
             }
     with open(save_dir / "result.json", "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)

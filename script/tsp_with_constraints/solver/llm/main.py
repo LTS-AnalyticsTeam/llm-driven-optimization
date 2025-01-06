@@ -1,10 +1,10 @@
-import tsp
+from tsp.solver.llm import LLMSolver
 import networkx as nx
 from pathlib import Path
 from tqdm import tqdm
 
 
-class LLMSolver(tsp.llm.LLMSolver):
+class LLMSolverExp(LLMSolver):
 
     def __init__(self):
         super().__init__()
