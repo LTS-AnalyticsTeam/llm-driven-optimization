@@ -54,12 +54,18 @@ class Simulator:
 
     def is_valid_tour(self, tour: list[int]) -> tuple[bool, str]:
         """ツアーが有効であるかを判定します。"""
+        is_valid, message_list = True, []
+        # 決定変数のチェック
         n = len(self.g.nodes)
         if len(tour) != n:
-            return False, "ツアーの長さが不正です。"
+            is_valid = False
+            message_list.append("ツアーの長さが不正です。")
+
         if set(range(n)) != set(tour):
-            return False, "ツアーの訪問ノードに重複があり不正です。"
-        return True, "このツアーは有効です。"
+            is_valid = False
+            message_list.append("ツアーの訪問ノードに重複があり不正です。")
+
+        return is_valid, ",".join(message_list)
 
     def obj_func(self, tour: list[int]) -> float:
         """

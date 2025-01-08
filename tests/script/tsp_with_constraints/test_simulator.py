@@ -24,6 +24,7 @@ def test_simulator():
 
 @pytest.mark.parametrize("nodes_num", [10, 20, 50])
 def test_is_valid_tour(nodes_num):
+    print("\n")
     SimulatorExp.time_windows_constraints = False
     SimulatorExp.precedence_constraints = False
     sim = SimulatorExp(
@@ -31,36 +32,50 @@ def test_is_valid_tour(nodes_num):
         seed=0,
     )
     tour = list(sim.g.nodes)
-    assert sim.is_valid_tour(tour)[0] == True
+    is_vaild, messages = sim.is_valid_tour(tour)
+    assert is_vaild == True
+    print(f"#正常:{messages}")
 
     # ツアーの長さが不正
     tour = list(sim.g.nodes)[:-1]
-    assert sim.is_valid_tour(tour)[0] == False
+    is_vaild, messages = sim.is_valid_tour(tour)
+    assert is_vaild == False
+    print(f"# ツアーの長さが不正:{messages}")
 
     # ツアーの訪問ノードに重複がある
     tour = list(sim.g.nodes) + [0]
-    assert sim.is_valid_tour(tour)[0] == False
+    is_vaild, messages = sim.is_valid_tour(tour)
+    assert is_vaild == False
+    print(f"# ツアーの訪問ノードに重複がある:{messages}")
 
     # 時間枠制約を超過
     sim.g.nodes[1]["time_window"] = (0, 0)
     sim.g[0][1]["weight"] = 100
     tour = list(sim.g.nodes)
-    assert sim.is_valid_tour(tour)[0] == False
+    is_vaild, messages = sim.is_valid_tour(tour)
+    assert is_vaild == False
+    print(f"# 時間枠制約を超過:{messages}")
 
     # 時間枠制約を満たす
     sim.g.nodes[1]["time_window"] = (0, 100)
     tour = list(sim.g.nodes)
-    assert sim.is_valid_tour(tour)[0] == True
+    is_vaild, messages = sim.is_valid_tour(tour)
+    assert is_vaild == True
+    print(f"# 時間枠制約を満たす:{messages}")
 
     # 順序制約を追加し、不正ツアーを検証
     sim.g.graph["precedence_pairs"] = [{"before": 2, "after": 3}]
     invalid_tour = list(sim.g.nodes)
     invalid_tour[2], invalid_tour[3] = invalid_tour[3], invalid_tour[2]
-    assert sim.is_valid_tour(invalid_tour)[0] == False
+    is_vaild, messages = sim.is_valid_tour(invalid_tour)
+    assert is_vaild == False
+    print(f"# 順序制約を追加し、不正ツアーを検証:{messages}")
 
     # 正しい順序のツアーを検証
     valid_tour = list(sim.g.nodes)
-    assert sim.is_valid_tour(valid_tour)[0] == True
+    is_vaild, messages = sim.is_valid_tour(valid_tour)
+    assert is_vaild == True
+    print(f"# 正しい順序のツアーを検証:{messages}")
 
 
 def test_obj_func():

@@ -58,16 +58,15 @@ class SimulatorExp(Simulator):
 
     def is_valid_tour(self, tour: list[int], log=False) -> tuple[bool, str]:
         """ツアーが有効であるかを判定します。"""
-        # 決定変数のチェック
-        n = len(self.g.nodes)
-        if len(tour) != n:
-            return False, "ツアーの長さが不正です。"
-        if set(range(n)) != set(tour):
-            return False, "ツアーの訪問ノードに重複があり不正です。"
+        is_valid, messages = super().is_valid_tour(tour)
+        message_list = messages.split(",") if messages != "" else []
 
         # スタート地点のチェック
         if tour[0] != self.g.graph["start"]:
-            return False, "スタート地点が不正です。"
+            is_valid = False
+            message_list.append(
+                f"Node:{self.g.graph["start"]}から開始しておらず不正です。"
+            )
 
         # 時間枠制約のチェック
         if log:
@@ -82,7 +81,8 @@ class SimulatorExp(Simulator):
                     if log:
                         print(f"{v}: {start} <= {total_time} <= {end}")
                 else:
-                    return False, f"ノード {tour[v]} の時間枠を超過しています。"
+                    is_valid = False
+                    message_list.append(f"ノード {tour[v]} の時間枠を超過しています。")
 
         # 順序制約のチェック
         if log:
@@ -96,9 +96,13 @@ class SimulatorExp(Simulator):
                         f"node[{pair['before']}](=index: {before_idx}) -> node[{pair['after']}](=index: {after_idx})"
                     )
             else:
-                return (
-                    False,
-                    f"ノード {pair['before']} はノード {pair['after']} より先に訪問される必要があります。",
+                is_valid = False
+                message_list.append(
+                    f"ノード {pair['before']} はノード {pair['after']} より先に訪問される必要があります。"
                 )
 
-        return True, "このツアーは有効です。"
+        messages = ",".join(message_list)
+        if messages == "":
+            messages = "有効なツアーです。"
+
+        return is_valid, messages
