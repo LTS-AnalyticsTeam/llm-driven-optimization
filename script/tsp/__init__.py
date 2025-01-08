@@ -1,2 +1,2 @@
-from . import experiment, simulator
+from .simulator import Simulator
 from .solver import nn, fi, milp, llm

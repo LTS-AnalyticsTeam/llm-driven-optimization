@@ -1,4 +1,4 @@
-from tsp_with_constraints.simulator import SimulatorExp
+from tsp_exp.simulator import SimulatorExp
 import pytest
 from pathlib import Path
 

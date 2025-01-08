@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
-from tsp_with_constraints.simulator import SimulatorExp
-from tsp_with_constraints.solver import milp, llm
+from tsp_exp.simulator import SimulatorExp
+from tsp_exp.solver import milp, llm
 
 
 N = 10
