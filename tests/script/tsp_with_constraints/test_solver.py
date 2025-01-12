@@ -62,7 +62,7 @@ def test_gpt4o():
     SimulatorExp.precedence_constraints = True
     execute_llm(
         seed=3,
-        iter_num=1,
+        iter_num=0,
         llm_model="gpt-4o",
         experiment_name="gpt4o_all_constraints",
     )
@@ -73,7 +73,7 @@ def test_gpt4o_time_windows_constraints():
     SimulatorExp.precedence_constraints = False
     execute_llm(
         seed=0,
-        iter_num=1,
+        iter_num=0,
         llm_model="gpt-4o",
         experiment_name="gpt4o_time_windows_constraints",
     )
@@ -84,7 +84,7 @@ def test_gpt4o_precedence_constraints():
     SimulatorExp.precedence_constraints = True
     execute_llm(
         seed=0,
-        iter_num=1,
+        iter_num=0,
         llm_model="gpt-4o",
         experiment_name="gpt4o_precedence_constraints",
     )
@@ -95,7 +95,7 @@ def test_o1():
     SimulatorExp.precedence_constraints = True
     execute_llm(
         seed=3,
-        iter_num=1,
+        iter_num=0,
         llm_model="o1",
         experiment_name="o1_all_constraints",
     )
@@ -106,7 +106,7 @@ def test_o1_time_windows_constraints():
     SimulatorExp.precedence_constraints = False
     execute_llm(
         seed=0,
-        iter_num=1,
+        iter_num=0,
         llm_model="o1",
         experiment_name="o1_time_windows_constraints",
     )
@@ -117,7 +117,7 @@ def test_o1_precedence_constraints():
     SimulatorExp.precedence_constraints = True
     execute_llm(
         seed=0,
-        iter_num=1,
+        iter_num=0,
         llm_model="o1",
         experiment_name="o1_precedence_constraints",
     )

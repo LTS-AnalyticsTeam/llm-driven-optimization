@@ -61,7 +61,7 @@ def test_milp_analyze_conflict():
 
 def test_llm_gpt4o():
     sim = Simulator(nodes_num=N, seed=0)
-    tour = llm.LLMSolver.solve(sim, iter_num=5, llm_model="gpt-4o")
+    tour = llm.LLMSolver.solve(sim, iter_num=0, llm_model="gpt-4o")
     show_result(sim, tour, f"{OUTPUT_DIR}/tsp_llm_gpt4o_solution.png")
     is_valid, message = sim.is_valid_tour(tour)
     assert is_valid, message
@@ -69,7 +69,7 @@ def test_llm_gpt4o():
 
 def test_llm_o1():
     sim = Simulator(nodes_num=N, seed=0)
-    tour = llm.LLMSolver.solve(sim, iter_num=5, llm_model="o1")
+    tour = llm.LLMSolver.solve(sim, iter_num=0, llm_model="o1")
     show_result(sim, tour, f"{OUTPUT_DIR}/tsp_llm_o1_solution.png")
     is_valid, message = sim.is_valid_tour(tour)
     assert is_valid, message

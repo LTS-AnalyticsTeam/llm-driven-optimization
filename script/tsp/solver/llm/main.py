@@ -11,6 +11,9 @@ from dotenv import load_dotenv
 
 class LLMSolver:
 
+    USE_IMAGE = False
+    ROUND_DIGITS = 2
+
     def __init__(self, sim: Simulator):
         self.sim = sim
         self.TMP_DIR = Path(__file__).parent / "__tmp__"
@@ -18,7 +21,6 @@ class LLMSolver:
         self.ENV_PATH = Path(__file__).parent / ".env"
         load_dotenv(self.ENV_PATH)
         self.CLIENT = OpenAI()
-        self.ROUND_DIGITS = 2
 
         with open(Path(__file__).parent / "schema.json", "r", encoding="utf-8") as f:
             self.JSON_SCHEMA = json.load(f)
@@ -61,20 +63,20 @@ class LLMSolver:
             model=model,
             messages=messages,
             response_format={"type": "json_schema", "json_schema": self.JSON_SCHEMA},
-            temperature=1,
+            temperature=1.0,  # o1が1.0しか対応していないため、1.0に固定
             max_completion_tokens=max_completion_tokens,
             top_p=1,
             frequency_penalty=0,
             presence_penalty=0,
         )
         output = json.loads(response.choices[0].message.content)
-        tour, reasoning = output["solution"], output["reasoning"]
+        tour = output["solution"]
         # 最初と最後の要素が同じ場合、最後の要素を削除
         if tour[0] == tour[-1]:
             tour.pop()
-        return tour, reasoning
+        return tour
 
-    def _write_result(self, i, tour, reasoning):
+    def _write_result(self, i, tour):
         result = (
             f"------\n"
             f"ツアー（決定変数）: {tour}\n"
@@ -132,50 +134,7 @@ class LLMSolver:
         self.sim.vizualize_nodes(path=tsp_img_path)
 
         # sysmtemプロンプトに画像を入力することができないため、ユーザプロンプトで画像を入力
-        messages += [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "これは巡回セールスマン問題を示す画像です。",
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/png;base64,{self._img2base64(tsp_img_path)}"
-                        },
-                    },
-                ],
-            },
-        ]
-        return messages
-
-    def _solve(self, iter_num: int = 5, llm_model: str = "gpt-4o") -> list[int]:
-        shutil.rmtree(self.TMP_DIR, ignore_errors=True)
-        self.TMP_DIR.mkdir(exist_ok=True, parents=True)
-        progress_bar = tqdm(total=iter_num + 1, desc="Loop LLM Solver", leave=False)
-        i = 0
-        messages = self._initalize_message()
-        tour, reasoning = self._solve_by_llm(
-            messages, llm_model, self.TMP_DIR / f"prompt_log_{i}.txt"
-        )
-        result = self._write_result(i, tour, reasoning)
-        progress_bar.update(1)
-
-        messages += [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "これまでの出力結果です。この結果を踏まえて、より良い解を出力する戦略を考えながら巡回セールスマン問題を解いてください。",
-                    }
-                ],
-            },
-        ]
-        # 解の改善
-        for i in range(1, iter_num + 1):
+        if self.USE_IMAGE:
             messages += [
                 {
                     "role": "user",
@@ -183,23 +142,89 @@ class LLMSolver:
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:image/png;base64,{self._img2base64(self.TMP_DIR / f"vizual_tsp_solution_{i-1}.png")}"
+                                "url": f"data:image/png;base64,{self._img2base64(tsp_img_path)}"
                             },
                         },
-                        {"type": "text", "text": result},
+                        {
+                            "type": "text",
+                            "text": "これは巡回セールスマン問題を示す画像です。巡回セールスマン問題を解いてください。",
+                        },
                     ],
                 },
             ]
-            tour, reasoning = self._solve_by_llm(
-                messages, llm_model, self.TMP_DIR / f"prompt_log_{i}.txt"
-            )
-            result = self._write_result(i, tour, reasoning)
-            progress_bar.update(1)
+        else:
+            messages += [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "巡回セールスマン問題を解いてください。",
+                        }
+                    ],
+                },
+            ]
+
+        return messages
+
+    def _solve(self, iter_num: int = 0, llm_model: str = "gpt-4o") -> list[int]:
+        if llm_model == "o1":
+            return list(self.sim.g.nodes)
+
+        shutil.rmtree(self.TMP_DIR, ignore_errors=True)
+        self.TMP_DIR.mkdir(exist_ok=True, parents=True)
+        progress_bar = tqdm(total=iter_num + 1, desc="Loop LLM Solver", leave=False)
+        i = 0
+        messages = self._initalize_message()
+        tour = self._solve_by_llm(
+            messages, llm_model, self.TMP_DIR / f"prompt_log_{i}.txt"
+        )
+        result = self._write_result(i, tour)
+        progress_bar.update(1)
+
+        # 解の改善
+        if iter_num > 0:
+            messages += [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "これまでの出力結果です。この結果を踏まえて、より良い解を出力する戦略を考えながら巡回セールスマン問題を解いてください。",
+                        }
+                    ],
+                },
+            ]
+            for i in range(1, iter_num + 1):
+                if self.USE_IMAGE:
+                    messages += [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/png;base64,{self._img2base64(self.TMP_DIR / f"vizual_tsp_solution_{i-1}.png")}"
+                                    },
+                                },
+                                {"type": "text", "text": result},
+                            ],
+                        },
+                    ]
+                else:
+                    messages += [
+                        {"role": "user", "content": [{"type": "text", "text": result}]}
+                    ]
+                tour = self._solve_by_llm(
+                    messages, llm_model, self.TMP_DIR / f"prompt_log_{i}.txt"
+                )
+                result = self._write_result(i, tour)
+                progress_bar.update(1)
 
         return tour
 
     @classmethod
-    def solve(cls, sim: Simulator, iter_num: int = 5, llm_model: str = "gpt-4o"):
+    def solve(cls, sim: Simulator, iter_num: int = 0, llm_model: str = "gpt-4o"):
         self = cls(sim)
         tour = self._solve(iter_num, llm_model)
         return tour

@@ -61,30 +61,40 @@ Summary は以下のような構造を想定している。
 {
   "nn": {
     "gap_mean": 16.776245677421088,
+    "gap_std": 8.9260136820131,
+    "gap_se": 8.9260136820131,
     "gap_95%_CI": [0.8497677366138063, 32.70272361822837],
     "validation_success_rate": 100.0,
     "gap_zero_rate": 0.0
   },
   "fi": {
     "gap_mean": 3.2077061265450113,
+    "gap_std": 8.9260136820131,
+    "gap_se": 8.9260136820131,
     "gap_95%_CI": [-2.1113909721030697, 8.526803225193092],
     "validation_success_rate": 100.0,
     "gap_zero_rate": 20.0
   },
   "milp": {
     "gap_mean": 0.0,
+    "gap_std": 0,
+    "gap_se": 0,    
     "gap_95%_CI": [0.0, 0.0],
     "validation_success_rate": 100.0,
     "gap_zero_rate": 100.0
   },
   "gpt-4o": {
     "gap_mean": 23.901450929801783,
+    "gap_std": 8.9260136820131,
+    "gap_se": 8.9260136820131,    
     "gap_95%_CI": [4.804552412408558, 42.99834944719501],
     "validation_success_rate": 100.0,
     "gap_zero_rate": 0.0
   },
   "o1": {
     "gap_mean": 198.4170221655523,
+    "gap_std": 8.9260136820131,
+    "gap_se": 8.9260136820131,    
     "gap_95%_CI": [169.74708465947012, 227.0869596716345],
     "validation_success_rate": 100.0,
     "gap_zero_rate": 0.0
@@ -196,6 +206,8 @@ class Experiment(ABC):
         """
         各ソルバの結果を集計し、以下の情報を返す関数。
         - gap_mean
+        - gap_std
+        - gap_se
         - gap_95%_CI
         - validation_success_rate
         - gap_zero_rate
@@ -247,6 +259,8 @@ class Experiment(ABC):
             if solver == "milp":
                 # milp自身のGAPは 0.0 とする
                 gap_mean = 0.0
+                gap_std = 0.0
+                gap_se = 0.0
                 gap_ci_lower = 0.0
                 gap_ci_upper = 0.0
                 gap_zero_rate = 100.0
@@ -255,8 +269,9 @@ class Experiment(ABC):
                 descr_gap = sw.DescrStatsW(arr_gap)
                 gap_mean = float(descr_gap.mean)
                 gap_ci_lower, gap_ci_upper = descr_gap.tconfint_mean(alpha=0.05)
-                gap_ci_lower = float(gap_ci_lower)
-                gap_ci_upper = float(gap_ci_upper)
+                gap_std = float(np.std(arr_gap, ddof=1))  # sample std
+                gap_se = gap_std / np.sqrt(len(arr_gap)) if len(arr_gap) > 0 else 0.0
+
                 # gap==0の割合計算
                 zero_count = gap_zero_count[solver]
                 gap_zero_rate = (
@@ -265,6 +280,8 @@ class Experiment(ABC):
 
             summary[solver] = {
                 "gap_mean": gap_mean,
+                "gap_std": gap_std,
+                "gap_se": gap_se,
                 "gap_95%_CI": [gap_ci_lower, gap_ci_upper],
                 "validation_success_rate": val_success_rate,
                 "gap_zero_rate": gap_zero_rate,
@@ -281,10 +298,12 @@ class Experiment(ABC):
         {
         10: {
             "nn": {
-            "gap_mean": -7.54,
-            "gap_95%_CI": [-19.26, 4.18],
-            "validation_success_rate": 100.0,
-            "gap_zero_rate": 40.0
+                "gap_mean": -7.54,
+                "gap_std" = 2.2,
+                "gap_se" = 0.9,
+                "gap_95%_CI": [-19.26, 4.18],
+                "validation_success_rate": 100.0,
+                "gap_zero_rate": 40.0
             },
             "fi": {...},
             "milp": {...},
@@ -304,9 +323,11 @@ class Experiment(ABC):
 
         metric は下記のとおり:
         1. gap_mean
-        2. gap_95%_CI_lower
-        3. gap_95%_CI_upper
-        4. validation_success_rate
+        2. gap_std
+        3. gap_se
+        4. gap_95%_CI_lower
+        5. gap_95%_CI_upper
+        6. validation_success_rate
         """
         rows = []
         indexes = []
@@ -315,6 +336,8 @@ class Experiment(ABC):
             row = {}
             for solver, stats in solver_dict.items():
                 row[(solver, "gap_mean")] = stats["gap_mean"]
+                row[(solver, "gap_std")] = stats["gap_std"]
+                row[(solver, "gap_se")] = stats["gap_se"]
                 row[(solver, "gap_95%_CI_lower")] = stats["gap_95%_CI"][0]
                 row[(solver, "gap_95%_CI_upper")] = stats["gap_95%_CI"][1]
                 row[(solver, "validation_success_rate")] = stats[
@@ -349,8 +372,8 @@ class Experiment1(Experiment):
             "nn": tsp.nn.solve(sim.g),
             "fi": tsp.fi.solve(sim.g),
             "milp": milp_model.solve(),
-            "gpt-4o": tsp.llm.LLMSolver.solve(sim, iter_num=1, llm_model="gpt-4o"),
-            "o1": tsp.llm.LLMSolver.solve(sim, iter_num=1, llm_model="o1"),
+            "gpt-4o": tsp.llm.LLMSolver.solve(sim, iter_num=0, llm_model="gpt-4o"),
+            "o1": tsp.llm.LLMSolver.solve(sim, iter_num=0, llm_model="o1"),
         }
 
 
@@ -379,6 +402,6 @@ class Experiment2(Experiment):
     ) -> dict[str, list[int]]:
         return {
             "milp": milp_model.solve(),
-            "gpt-4o": tsp_exp.llm.LLMSolverExp.solve(sim, iter_num=1, llm_model="gpt-4o"),
-            "o1": tsp_exp.llm.LLMSolverExp.solve(sim, iter_num=1, llm_model="o1"),
+            "gpt-4o": tsp_exp.llm.LLMSolverExp.solve(sim, iter_num=0, llm_model="gpt-4o"),
+            "o1": tsp_exp.llm.LLMSolverExp.solve(sim, iter_num=0, llm_model="o1"),
         }  # fmt: skip
