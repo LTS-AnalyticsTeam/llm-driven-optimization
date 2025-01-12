@@ -1,19 +1,20 @@
 from tsp.solver.llm import LLMSolver
-from tsp.simulator import Simulator
-import networkx as nx
-from pathlib import Path
-from tqdm import tqdm
 
 
 class LLMSolverExp(LLMSolver):
 
-    def __init__(self, sim: Simulator):
-        super().__init__(sim)
-        self.TMP_DIR = Path(__file__).parent / "__tmp__"
-        self.TMP_DIR.mkdir(exist_ok=True, parents=True)
-
-    def _get_system_prompt(self) -> list[dict]:
-        messages = super()._get_system_prompt()
+    def _get_system_prompt(self):
+        node_coords = {
+            n: (
+                round(self.sim.g.nodes[n]["x"], self.ROUND_DIGITS),
+                round(self.sim.g.nodes[n]["y"], self.ROUND_DIGITS),
+            )
+            for n in self.sim.g.nodes
+        }
+        distances = {
+            (u, v): round(self.sim.g[u][v]["weight"], self.ROUND_DIGITS)
+            for (u, v) in self.sim.g.edges
+        }
         start_node = self.sim.g.graph["start"]
         time_windows = {
             f"Node-{n}": (
@@ -24,19 +25,31 @@ class LLMSolverExp(LLMSolver):
             if self.sim.g.nodes[n]["time_window"] is not None
         }
         precedence_pairs = self.sim.g.graph["precedence_pairs"]
-        messages[0]["content"].append(
+
+        # TSP問題設定のシステムプロンプト
+        messages = [
             {
-                "type": "text",
-                "text": f"次の条件は問題における制約条件です。この条件を必ず考慮して出力してください。",
-            }
-        )
-        messages[0]["content"].append(
-            {"type": "text", "text": f"Start node: {start_node}"}
-        )
-        messages[0]["content"].append(
-            {"type": "text", "text": f"Time windows: {time_windows}"}
-        )
-        messages[0]["content"].append(
-            {"type": "text", "text": f"Precedence pairs: {precedence_pairs}"}
-        )
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": self.PROMPT.format(
+                            problem="\n".join(
+                                [
+                                    f"## Node coordinates  \n{node_coords}",
+                                    f"## Edges and distances  \n{distances}",
+                                ]
+                            ),
+                            constraints="\n".join(
+                                [
+                                    f"## Constraint0  \nここで「start node」とは、必ずツアーの最初に訪問し、最終的に戻る拠点とするノードを指します。  \nStart node: {start_node}",
+                                    f"## Constraint1  \n特定のノードには訪問が許可される時間帯（最早到着時刻と最遅到着時刻）が定義されています。以下は「Node-n: (最早到着時刻, 最遅到着時刻)」を表します。  \nTime windows: {time_windows}",
+                                    f"## Constraint2  \n以下のノードペアについては、「前者を先に訪問しなければならない（後者を後に訪問しなければならない）」という順序制約があります。  \nPrecedence pairs: {precedence_pairs}",
+                                ]
+                            ),
+                        ),
+                    },
+                ],
+            },
+        ]
         return messages

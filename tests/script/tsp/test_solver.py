@@ -5,7 +5,7 @@ from tsp.simulator import Simulator
 from tsp.solver import nn, fi, milp, llm
 
 
-N = 30
+N = 50
 OUTPUT_DIR = Path(__file__).parent / "__output__" / "solver"
 OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 
@@ -59,9 +59,17 @@ def test_milp_analyze_conflict():
         traceback.print_exc()
 
 
-def test_llm():
+def test_llm_gpt4o():
     sim = Simulator(nodes_num=N, seed=0)
-    tour = llm.LLMSolver.solve(sim, iter_num=1, llm_model="gpt-4o")
-    show_result(sim, tour, f"{OUTPUT_DIR}/tsp_llm_solution.png")
+    tour = llm.LLMSolver.solve(sim, iter_num=5, llm_model="gpt-4o")
+    show_result(sim, tour, f"{OUTPUT_DIR}/tsp_llm_gpt4o_solution.png")
+    is_valid, message = sim.is_valid_tour(tour)
+    assert is_valid, message
+
+
+def test_llm_o1():
+    sim = Simulator(nodes_num=N, seed=0)
+    tour = llm.LLMSolver.solve(sim, iter_num=5, llm_model="o1")
+    show_result(sim, tour, f"{OUTPUT_DIR}/tsp_llm_o1_solution.png")
     is_valid, message = sim.is_valid_tour(tour)
     assert is_valid, message

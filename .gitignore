@@ -1,6 +1,6 @@
 cos_installer_preview-22.1.2.R4-M0N99ML-linux-arm64.bin
 __output__
-__tmp__
+__tmp__*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

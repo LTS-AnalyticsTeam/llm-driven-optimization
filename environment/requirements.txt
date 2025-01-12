@@ -10,4 +10,5 @@ pytest
 pyomo
 openai
 black
+python-dotenv
 cplex==22.1.2.0

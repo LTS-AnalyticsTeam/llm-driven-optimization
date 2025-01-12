@@ -2,6 +2,7 @@ from tsp.simulator import Simulator
 import networkx as nx
 from openai import OpenAI
 from pathlib import Path
+import shutil
 import json
 import base64
 from tqdm import tqdm
@@ -51,12 +52,17 @@ class LLMSolver:
             with open(prompt_log, "w", encoding="utf-8") as f:
                 json.dump(masked_messages, f, ensure_ascii=False, indent=2)
 
+        if model == "gpt-4o":
+            max_completion_tokens = 16384
+        if model == "o1":
+            max_completion_tokens = 100000
+
         response = self.CLIENT.chat.completions.create(
             model=model,
             messages=messages,
             response_format={"type": "json_schema", "json_schema": self.JSON_SCHEMA},
             temperature=1,
-            max_completion_tokens=2048,
+            max_completion_tokens=max_completion_tokens,
             top_p=1,
             frequency_penalty=0,
             presence_penalty=0,
@@ -74,7 +80,6 @@ class LLMSolver:
             f"ツアー（決定変数）: {tour}\n"
             f"ツアーの妥当性: {self.sim.is_valid_tour(tour)}\n"
             f"目的関数の値: {round(self.sim.obj_func(tour), self.ROUND_DIGITS)}\n"
-            f"求解戦略: {reasoning}\n"
             f"------\n"
         )
         with open(
@@ -102,9 +107,18 @@ class LLMSolver:
             {
                 "role": "system",
                 "content": [
-                    {"type": "text", "text": self.PROMPT},
-                    {"type": "text", "text": f"Node coordinates: {node_coords}"},
-                    {"type": "text", "text": f"Edges and distances: {distances}"},
+                    {
+                        "type": "text",
+                        "text": self.PROMPT.format(
+                            problem="\n".join(
+                                [
+                                    f"## Node coordinates  \n{node_coords}",
+                                    f"## Edges and distances  \n{distances}",
+                                ]
+                            ),
+                            constraints="なし",
+                        ),
+                    },
                 ],
             },
         ]
@@ -138,9 +152,8 @@ class LLMSolver:
         return messages
 
     def _solve(self, iter_num: int = 5, llm_model: str = "gpt-4o") -> list[int]:
-        if llm_model == "o1":
-            return list(self.sim.g.nodes)
-
+        shutil.rmtree(self.TMP_DIR, ignore_errors=True)
+        self.TMP_DIR.mkdir(exist_ok=True, parents=True)
         progress_bar = tqdm(total=iter_num + 1, desc="Loop LLM Solver", leave=False)
         i = 0
         messages = self._initalize_message()
