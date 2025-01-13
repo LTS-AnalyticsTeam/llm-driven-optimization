@@ -165,10 +165,6 @@ class LLMSolver:
         return messages
 
     def _solve(self, iter_num: int = 0, llm_model: str = "gpt-4o") -> list[int]:
-        import time
-
-        time.sleep(0.1)
-        return list(self.sim.g.nodes)
         shutil.rmtree(self.TMP_DIR, ignore_errors=True)
         self.TMP_DIR.mkdir(exist_ok=True, parents=True)
         progress_bar = tqdm(total=iter_num + 1, desc="Loop LLM Solver", leave=False)
