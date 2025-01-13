@@ -8,7 +8,7 @@ class TSPExp(TSP):
     def _define_params(self):
         """エッジの重み (distance) とサブツアー制約用 M を Pyomo の Param として定義する。"""
         super()._define_params()
-        self.big_M = pyo.Param(initialize=self.N * 100)
+        self.big_M = pyo.Param(initialize=self.N * 1)
 
     def _define_decision_variables(self):
         super()._define_decision_variables()

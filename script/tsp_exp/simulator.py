@@ -8,8 +8,8 @@ import random
 
 class SimulatorExp(Simulator):
 
-    time_windows_constraints: bool = False
-    precedence_constraints: bool = False
+    time_windows_num: int = 0
+    precedence_pair_num: int = 0
 
     def __init__(
         self,
@@ -32,26 +32,24 @@ class SimulatorExp(Simulator):
             self.g.nodes[node]["time_window"] = None
         self.g.graph["precedence_pairs"] = []
 
-        if self.time_windows_constraints:
-            time_window_num = round(self.nodes_num / 10) * 3
+        if self.time_windows_num > 0:
             tour = tsp.solver.fi.solve(self.g)
             obj_value = self.obj_func(tour)
-            time_window_width = obj_value / time_window_num
+            time_window_width = obj_value / self.time_windows_num
             optional_nodes = list(self.g.nodes)[1:]  # スタート地点0は除く
-            selected_nodes = random.sample(optional_nodes, time_window_num)
+            selected_nodes = random.sample(optional_nodes, self.time_windows_num)
             for i, node in enumerate(selected_nodes):
                 self.g.nodes[node]["time_window"] = (
-                    0,
+                    i * time_window_width,
                     (i + 1) * time_window_width,
                 )
 
-        if self.precedence_constraints:
-            precedence_pair_num = round(self.nodes_num * 3 / 10)
+        if self.precedence_pair_num > 0:
             optional_nodes = list(self.g.nodes)[1:]  # スタート地点0は除く
-            selected_nodes = random.sample(optional_nodes, precedence_pair_num * 2)
+            selected_nodes = random.sample(optional_nodes, self.precedence_pair_num * 2)
             self.g.graph["precedence_pairs"] = [
                 {"before": selected_nodes[i], "after": selected_nodes[i + 1]}
-                for i in range(0, precedence_pair_num * 2, 2)
+                for i in range(0, self.precedence_pair_num * 2, 2)
             ]
 
         return None
@@ -77,12 +75,15 @@ class SimulatorExp(Simulator):
             time_window = self.g.nodes[v]["time_window"]
             if time_window is not None:
                 start, end = time_window
-                if start <= total_time <= end:
-                    if log:
-                        print(f"{v}: {start} <= {total_time} <= {end}")
+                if total_time < start:
+                    total_time = start
+                elif total_time <= end:
+                    pass
                 else:
                     is_valid = False
                     message_list.append(f"ノード {tour[v]} の時間枠を超過しています。")
+                if log:
+                    print(f"{v}: {start} <= {total_time} <= {end}")
 
         # 順序制約のチェック
         if log:
@@ -91,14 +92,15 @@ class SimulatorExp(Simulator):
             before_idx = tour.index(pair["before"])
             after_idx = tour.index(pair["after"])
             if before_idx < after_idx:
-                if log:
-                    print(
-                        f"node[{pair['before']}](=index: {before_idx}) -> node[{pair['after']}](=index: {after_idx})"
-                    )
+                pass
             else:
                 is_valid = False
                 message_list.append(
                     f"ノード {pair['before']} はノード {pair['after']} より先に訪問される必要があります。"
+                )
+            if log:
+                print(
+                    f"node[{pair['before']}](=index: {before_idx}) -> node[{pair['after']}](=index: {after_idx})"
                 )
 
         messages = ",".join(message_list)

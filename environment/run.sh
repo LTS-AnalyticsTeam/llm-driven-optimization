@@ -15,4 +15,5 @@ fi
 
 # コンテナを実行
 REPO_DIR=$(cd $(dirname $0)/..; pwd)
-docker run --name $CONTAINER_NAME -v "$REPO_DIR":/app -d -it $IMAGE_NAME /bin/bash
+docker run --name $CONTAINER_NAME -v "$REPO_DIR":/app --env-file="$REPO_DIR/environment/.env" -d -it $IMAGE_NAME /bin/bash
+

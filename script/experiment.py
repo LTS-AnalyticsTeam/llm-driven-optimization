@@ -1,6 +1,8 @@
 import tsp
 import tsp_exp
 import json
+import random
+import uuid
 from tqdm import tqdm
 from pathlib import Path
 import pandas as pd
@@ -114,8 +116,8 @@ class Experiment(ABC):
         self.problem_file_path = self.save_dir / "problem.joblib"
         self.summary_file_path = self.save_dir / "summary.csv"
 
-    def _get_result_file_path(self, problem_size: int) -> Path:
-        return self.save_dir / f"result-problem_size{problem_size}.json"
+    def _result_path(self, problem_size: int) -> Path:
+        return self.save_dir / f"result_p-size-{problem_size}.json"
 
     @abstractmethod
     def _gen_sim(self, problem_size: int, seed: int) -> tsp.Simulator:
@@ -126,28 +128,27 @@ class Experiment(ABC):
         pass
 
     @abstractmethod
-    def _get_tours(
-        self, sim: tsp.Simulator, milp_model: tsp.milp.TSP
-    ) -> dict[str, list[int]]:
+    def _get_tours(self, sim: tsp.Simulator) -> dict[str, list[int]]:
         pass
 
-    def gen_problem(self, problem_sizes: list[int], sample_num: int) -> None:
+    def gen_problem(self, problem_sizes: list[int], sim_num: int) -> None:
         """
         問題を生成する関数。
         """
 
         sim_dict: SimDict = {}
         for problem_size in tqdm(problem_sizes, desc="Loop Problem Size", leave=False):
-            progress_bar = tqdm(total=sample_num, desc="Loop Sampling", leave=False)
+            progress_bar = tqdm(total=sim_num, desc="Loop Sampling", leave=False)
             i = 0
             sim_dict[problem_size] = []
-            while progress_bar.n < sample_num:
+            while progress_bar.n < sim_num:
                 sim = self._gen_sim(problem_size, seed=i)
                 milp_model = self._gen_milp_model(sim)
                 try:
                     tour = milp_model.solve(timelimit=10)
                     is_valid, _ = sim.is_valid_tour(tour)
                     if is_valid:
+                        sim.opt_tour = tour
                         sim_dict[problem_size].append(sim)
                         progress_bar.update(1)
                 except:
@@ -158,7 +159,7 @@ class Experiment(ABC):
 
         return None
 
-    def run(self):
+    def run(self, sample_num: int = 30) -> None:
         """
         複数の問題サイズについて run → summarize → pandas.DataFrame化 を行い、
         それらの結果をまとめて CSV に出力するメイン関数。
@@ -166,41 +167,48 @@ class Experiment(ABC):
         sim_dict: SimDict = joblib.load(self.problem_file_path)
 
         summaries = {}
-        for problem_size, sim_list in tqdm(sim_dict.items(), desc="Loop Problem Size"):
-            result = self._run_all_solver(sim_list)
-            with open(
-                self._get_result_file_path(problem_size), "w", encoding="utf-8"
-            ) as f:
-                json.dump(result, f, ensure_ascii=False, indent=2)
+        for p_size, sim_list in tqdm(sim_dict.items(), desc="Loop Problem Size"):
+            try:
+                # すでに結果がある場合は読み込む
+                with open(self._result_path(p_size), "r", encoding="utf-8") as f:
+                    result = json.load(f)
+            except:
+                # 結果がない場合は初期化
+                result = {}
+
+            p_bar = tqdm(total=sample_num, desc="Loop Sampling", leave=False)
+            p_bar.update(len(result.keys()))
+
+            while p_bar.n < sample_num:
+                for sim in random.sample(sim_list, len(sim_list)):
+                    try:
+                        key = str(uuid.uuid4())
+                        result[key] = {}
+                        tours = self._get_tours(sim)
+                        for solver, tour in tours.items():
+                            obj_value = sim.obj_func(tour)
+                            is_valid, messeage = sim.is_valid_tour(tour)
+                            result[key][solver] = {
+                                "tour": tour,
+                                "obj_value": obj_value,
+                                "is_valid": is_valid,
+                                "messeage": messeage,
+                            }
+                        with open(
+                            self._result_path(p_size), "w", encoding="utf-8"
+                        ) as f:
+                            json.dump(result, f, ensure_ascii=False, indent=2)
+                        p_bar.update(1)
+                    except:
+                        pass
+
             summary = self._summarize(result, self.solvers)
-            summaries[problem_size] = summary
+            summaries[p_size] = summary
 
         summaries_df = self._convert_to_pandas(summaries)
-        summaries_df.to_csv(self.summary_file_path, index=True)
+        summaries_df.to_csv(self.summary_file_path, index=True, encoding="utf-8-sig")
 
         return None
-
-    def _run_all_solver(self, sim_list: list[tsp.Simulator]) -> Result:
-        """
-        TSP の各種ソルバを実行して結果を保存する関数。
-        """
-        result = {}
-        i = 0
-        for sim in tqdm(sim_list, desc="Loop Sampling", leave=False):
-            result[i] = {}
-            milp_model = self._gen_milp_model(sim)
-            tours = self._get_tours(sim, milp_model)
-            for k, tour in tours.items():
-                obj_value = sim.obj_func(tour)
-                is_valid, messeage = sim.is_valid_tour(tour)
-                result[i][k] = {
-                    "tour": tour,
-                    "obj_value": obj_value,
-                    "is_valid": is_valid,
-                    "messeage": messeage,
-                }
-            i += 1
-        return result
 
     def _summarize(self, result: Result, solvers: list[str]) -> Summary:
         """
@@ -355,7 +363,7 @@ class Experiment(ABC):
         return df
 
 
-class Experiment1(Experiment):
+class ExperimentTSP(Experiment):
 
     solvers = ["nn", "fi", "milp", "gpt-4o", "o1"]
 
@@ -365,31 +373,29 @@ class Experiment1(Experiment):
     def _gen_milp_model(self, sim: tsp.Simulator) -> tsp.milp.TSP:
         return tsp.milp.TSP(sim.g)
 
-    def _get_tours(
-        self, sim: tsp.Simulator, milp_model: tsp.milp.TSP
-    ) -> dict[str, list[int]]:
+    def _get_tours(self, sim: tsp.Simulator) -> dict[str, list[int]]:
         return {
             "nn": tsp.nn.solve(sim.g),
             "fi": tsp.fi.solve(sim.g),
-            "milp": milp_model.solve(),
+            "milp": sim.opt_tour,
             "gpt-4o": tsp.llm.LLMSolver.solve(sim, iter_num=0, llm_model="gpt-4o"),
             "o1": tsp.llm.LLMSolver.solve(sim, iter_num=0, llm_model="o1"),
         }
 
 
-class Experiment2(Experiment):
+class ExperimentTSPExp(Experiment):
 
     solvers = ["milp", "gpt-4o", "o1"]
 
     def __init__(
         self,
         save_dir: Path,
-        time_windows_constraints=True,
-        precedence_constraints=True,
+        time_windows_num=0,
+        precedence_pair_num=0,
     ):
         super().__init__(save_dir)
-        tsp_exp.SimulatorExp.time_windows_constraints = time_windows_constraints
-        tsp_exp.SimulatorExp.precedence_constraints = precedence_constraints
+        tsp_exp.SimulatorExp.time_windows_num = time_windows_num
+        tsp_exp.SimulatorExp.precedence_pair_num = precedence_pair_num
 
     def _gen_sim(self, problem_size: int, seed: int) -> tsp_exp.SimulatorExp:
         return tsp_exp.SimulatorExp(problem_size, seed)
@@ -397,11 +403,9 @@ class Experiment2(Experiment):
     def _gen_milp_model(self, sim: tsp_exp.SimulatorExp) -> tsp_exp.milp.TSPExp:
         return tsp_exp.milp.TSPExp(sim.g)
 
-    def _get_tours(
-        self, sim: tsp_exp.SimulatorExp, milp_model: tsp_exp.milp.TSPExp
-    ) -> dict[str, list[int]]:
+    def _get_tours(self, sim: tsp_exp.SimulatorExp) -> dict[str, list[int]]:
         return {
-            "milp": milp_model.solve(),
+            "milp": sim.opt_tour,
             "gpt-4o": tsp_exp.llm.LLMSolverExp.solve(sim, iter_num=0, llm_model="gpt-4o"),
             "o1": tsp_exp.llm.LLMSolverExp.solve(sim, iter_num=0, llm_model="o1"),
         }  # fmt: skip

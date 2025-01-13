@@ -11,6 +11,7 @@ class Simulator:
         self.seed = seed
         self.nodes_num = nodes_num
         self._define_problem()
+        self.opt_tour = None
 
     def _define_problem(self) -> None:
         """
@@ -83,14 +84,12 @@ class Simulator:
         except:
             return np.nan
 
-        total_time = 0.0
-        for i in range(len(tour) - 1):
-            u = tour[i]
-            v = tour[i + 1]
-            total_time += self.g[u][v]["weight"]
+        total_distance = 0.0
+        for u, v in zip(tour[:-1], tour[1:]):
+            total_distance += self.g[u][v]["weight"]
         # 最後の頂点から最初の頂点への移動距離を加算
-        total_time += self.g[tour[-1]][tour[0]]["weight"]
-        return total_time
+        total_distance += self.g[tour[-1]][tour[0]]["weight"]
+        return total_distance
 
     def vizualize(self, tour: list[int] = None, path: str = "tsp.png") -> None:
         """

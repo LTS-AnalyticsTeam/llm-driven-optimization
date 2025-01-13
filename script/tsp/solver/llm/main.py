@@ -6,7 +6,6 @@ import shutil
 import json
 import base64
 from tqdm import tqdm
-from dotenv import load_dotenv
 
 
 class LLMSolver:
@@ -18,8 +17,6 @@ class LLMSolver:
         self.sim = sim
         self.TMP_DIR = Path(__file__).parent / "__tmp__"
         self.TMP_DIR.mkdir(exist_ok=True, parents=True)
-        self.ENV_PATH = Path(__file__).parent / ".env"
-        load_dotenv(self.ENV_PATH)
         self.CLIENT = OpenAI()
 
         with open(Path(__file__).parent / "schema.json", "r", encoding="utf-8") as f:
@@ -168,9 +165,10 @@ class LLMSolver:
         return messages
 
     def _solve(self, iter_num: int = 0, llm_model: str = "gpt-4o") -> list[int]:
-        if llm_model == "o1":
-            return list(self.sim.g.nodes)
+        import time
 
+        time.sleep(0.1)
+        return list(self.sim.g.nodes)
         shutil.rmtree(self.TMP_DIR, ignore_errors=True)
         self.TMP_DIR.mkdir(exist_ok=True, parents=True)
         progress_bar = tqdm(total=iter_num + 1, desc="Loop LLM Solver", leave=False)
