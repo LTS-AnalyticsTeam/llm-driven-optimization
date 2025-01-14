@@ -8,8 +8,10 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import joblib
+import traceback
 import statsmodels.stats.weightstats as sw
 from abc import ABC, abstractmethod
+from concurrent.futures import ProcessPoolExecutor
 
 SimDict = dict[int, list[tsp.Simulator]]
 Result = dict[int, dict[str, dict[str, any]]]
@@ -109,6 +111,7 @@ Summary は以下のような構造を想定している。
 class Experiment(ABC):
 
     solvers: list[str]
+    max_workers: int = 8
 
     def __init__(self, save_dir: Path):
         save_dir.mkdir(exist_ok=True, parents=True)
@@ -145,14 +148,14 @@ class Experiment(ABC):
                 sim = self._gen_sim(problem_size, seed=i)
                 milp_model = self._gen_milp_model(sim)
                 try:
-                    tour = milp_model.solve(timelimit=10)
+                    tour = milp_model.solve(timelimit=3600, tee=True)
                     is_valid, _ = sim.is_valid_tour(tour)
                     if is_valid:
                         sim.opt_tour = tour
                         sim_dict[problem_size].append(sim)
                         progress_bar.update(1)
                 except:
-                    pass
+                    traceback.print_exc()
                 i += 1
 
         joblib.dump(sim_dict, self.problem_file_path)
@@ -168,47 +171,57 @@ class Experiment(ABC):
 
         summaries = {}
         for p_size, sim_list in tqdm(sim_dict.items(), desc="Loop Problem Size"):
+            # 過去の途中結果の読み込み
             try:
-                # すでに結果がある場合は読み込む
                 with open(self._result_path(p_size), "r", encoding="utf-8") as f:
                     result = json.load(f)
             except:
-                # 結果がない場合は初期化
                 result = {}
 
             p_bar = tqdm(total=sample_num, desc="Loop Sampling", leave=False)
             p_bar.update(len(result.keys()))
 
+            # ソルバーの実行
             while p_bar.n < sample_num:
-                for sim in random.sample(sim_list, len(sim_list)):
-                    try:
-                        key = str(uuid.uuid4())
-                        result[key] = {}
-                        tours = self._get_tours(sim)
-                        for solver, tour in tours.items():
-                            obj_value = sim.obj_func(tour)
-                            is_valid, messeage = sim.is_valid_tour(tour)
-                            result[key][solver] = {
-                                "tour": tour,
-                                "obj_value": obj_value,
-                                "is_valid": is_valid,
-                                "messeage": messeage,
-                            }
-                        with open(
-                            self._result_path(p_size), "w", encoding="utf-8"
-                        ) as f:
-                            json.dump(result, f, ensure_ascii=False, indent=2)
-                        p_bar.update(1)
-                    except:
-                        pass
-
+                sims = random.sample(sim_list, len(sim_list))
+                with ProcessPoolExecutor(self.max_workers) as executor:
+                    for key, local_data in executor.map(self._process_single_sim, sims):
+                        if key is not None:
+                            result[key] = local_data
+                            p_bar.update(1)
+                # 途中経過を保存
+                with open(self._result_path(p_size), "w", encoding="utf-8") as f:
+                    json.dump(result, f, ensure_ascii=False, indent=2)
+            # 最終結果をサマリー
             summary = self._summarize(result, self.solvers)
             summaries[p_size] = summary
 
+        # 最終結果をpd.DataFrameに変換
         summaries_df = self._convert_to_pandas(summaries)
         summaries_df.to_csv(self.summary_file_path, index=True, encoding="utf-8-sig")
 
         return None
+
+    def _process_single_sim(
+        self, sim: tsp.Simulator
+    ) -> tuple[str, dict[str, dict[str, any]]]:
+        try:
+            key = str(uuid.uuid4())
+            local_data = {}
+            tours = self._get_tours(sim)
+            for solver, tour in tours.items():
+                obj_value = sim.obj_func(tour)
+                is_valid, messeage = sim.is_valid_tour(tour)
+                local_data[solver] = {
+                    "tour": tour,
+                    "obj_value": obj_value,
+                    "is_valid": is_valid,
+                    "messeage": messeage,
+                }
+            return key, local_data
+        except:
+            traceback.print_exc()
+            return None, None
 
     def _summarize(self, result: Result, solvers: list[str]) -> Summary:
         """

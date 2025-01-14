@@ -81,7 +81,7 @@ class SimulatorExp(Simulator):
                     pass
                 else:
                     is_valid = False
-                    message_list.append(f"ノード {tour[v]} の時間枠を超過しています。")
+                    message_list.append(f"ノード {v} の時間枠を超過しています。")
                 if log:
                     print(f"{v}: {start} <= {total_time} <= {end}")
 

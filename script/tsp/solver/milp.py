@@ -139,7 +139,6 @@ class TSP(pyo.ConcreteModel):
         solver.options["timelimit"] = timelimit
         solver.options["mip_tolerances_mipgap"] = mipgap
         solver.options["mip_tolerances_absmipgap"] = mipgap
-        solver.options["emphasis_numerical"] = "yes"  # 数値精度の強調を有効にする
 
         result = solver.solve(self, tee=tee)
         self.display(filename=log_dir / "tsp_display.log")  # ログの保存

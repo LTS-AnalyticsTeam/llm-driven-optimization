@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 import json
 import base64
+import uuid
 from tqdm import tqdm
 
 
@@ -15,7 +16,7 @@ class LLMSolver:
 
     def __init__(self, sim: Simulator):
         self.sim = sim
-        self.TMP_DIR = Path(__file__).parent / "__tmp__"
+        self.TMP_DIR = Path(__file__).parent / "__tmp__" / str(uuid.uuid4())
         self.TMP_DIR.mkdir(exist_ok=True, parents=True)
         self.CLIENT = OpenAI()
 
@@ -164,8 +165,9 @@ class LLMSolver:
 
         return messages
 
-    def _solve(self, iter_num: int = 0, llm_model: str = "gpt-4o") -> list[int]:
-        shutil.rmtree(self.TMP_DIR, ignore_errors=True)
+    def _solve(
+        self, iter_num: int = 0, llm_model: str = "gpt-4o", save_log=False
+    ) -> list[int]:
         self.TMP_DIR.mkdir(exist_ok=True, parents=True)
         progress_bar = tqdm(total=iter_num + 1, desc="Loop LLM Solver", leave=False)
         i = 0
@@ -215,10 +217,18 @@ class LLMSolver:
                 result = self._write_result(i, tour)
                 progress_bar.update(1)
 
+        if not save_log:
+            shutil.rmtree(self.TMP_DIR, ignore_errors=True)
         return tour
 
     @classmethod
-    def solve(cls, sim: Simulator, iter_num: int = 0, llm_model: str = "gpt-4o"):
+    def solve(
+        cls,
+        sim: Simulator,
+        iter_num: int = 0,
+        llm_model: str = "gpt-4o",
+        save_log=False,
+    ) -> list[int]:
         self = cls(sim)
         tour = self._solve(iter_num, llm_model)
         return tour
