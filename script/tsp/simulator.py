@@ -6,6 +6,8 @@ import random
 
 class Simulator:
 
+    x_range, y_range = (-0.03, 1.03), (-0.03, 1.03)
+
     def __init__(self, nodes_num: int = 10, seed: int = 0):
         random.seed(seed)
         self.seed = seed
@@ -116,6 +118,8 @@ class Simulator:
                 self.g, pos, edgelist=tour_edges, edge_color="red", width=2
             )
 
+        plt.xlim(*self.x_range)
+        plt.ylim(*self.y_range)
         plt.axis("on")
         plt.tick_params(labelbottom=True, labelleft=True, bottom=True, left=True)
         plt.savefig(path)

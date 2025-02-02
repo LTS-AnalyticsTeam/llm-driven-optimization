@@ -1,5 +1,4 @@
-import tsp
-import tsp_exp
+import tsp, tsp_exp, tsp_image
 import json
 import random
 import uuid
@@ -145,9 +144,10 @@ class Experiment(ABC):
             i = 0
             sim_dict[problem_size] = []
             while progress_bar.n < sim_num:
-                sim = self._gen_sim(problem_size, seed=i)
-                milp_model = self._gen_milp_model(sim)
                 try:
+                    print(f"Create Simulator Seed: {i}")
+                    sim = self._gen_sim(problem_size, seed=i)
+                    milp_model = self._gen_milp_model(sim)
                     tour = milp_model.solve(timelimit=3600, tee=True)
                     is_valid, _ = sim.is_valid_tour(tour)
                     if is_valid:
@@ -234,7 +234,6 @@ class Experiment(ABC):
         - gap_zero_rate
         """
         # 各ソルバごとに目的関数値とGAPを溜めるリストを用意
-        obj_values = {solver: [] for solver in solvers}
         gap_percentages = {solver: [] for solver in solvers if solver != "milp"}
         # 各ソルバごとのvalidation成功数と試行数
         valid_count_by_solver = {solver: 0 for solver in solvers}
@@ -252,15 +251,13 @@ class Experiment(ABC):
                     valid_count_by_solver[solver] += 1
 
                 # Skip gap calculations if obj is NaN
-                if np.isnan(obj):
-                    pass
-                else:
-                    obj_values[solver].append(obj)
-                    if solver != "milp":
-                        gap = ((obj - milp_obj) / milp_obj) * 100
-                        gap_percentages[solver].append(gap)
-                        if gap == 0:
-                            gap_zero_count[solver] += 1
+                if not np.isnan(obj):
+                    if solver_data["is_valid"]:
+                        if solver != "milp":
+                            gap = ((obj - milp_obj) / milp_obj) * 100
+                            gap_percentages[solver].append(gap)
+                            if gap == 0:
+                                gap_zero_count[solver] += 1
 
         # 結果をまとめるための辞書
         summary = {}
@@ -285,13 +282,21 @@ class Experiment(ABC):
                 gap_ci_lower = 0.0
                 gap_ci_upper = 0.0
                 gap_zero_rate = 100.0
+            elif len(gap_percentages[solver]) == 0:
+                # データがない場合は 0 とする
+                gap_mean = 0.0
+                gap_std = 0.0
+                gap_se = 0.0
+                gap_ci_lower = 0.0
+                gap_ci_upper = 0.0
+                gap_zero_rate = 0.0
             else:
                 arr_gap = np.array(gap_percentages[solver])
                 descr_gap = sw.DescrStatsW(arr_gap)
                 gap_mean = float(descr_gap.mean)
-                gap_ci_lower, gap_ci_upper = descr_gap.tconfint_mean(alpha=0.05)
                 gap_std = float(np.std(arr_gap, ddof=1))  # sample std
                 gap_se = gap_std / np.sqrt(len(arr_gap)) if len(arr_gap) > 0 else 0.0
+                gap_ci_lower, gap_ci_upper = descr_gap.tconfint_mean(alpha=0.05)
 
                 # gap==0の割合計算
                 zero_count = gap_zero_count[solver]
@@ -422,3 +427,79 @@ class ExperimentTSPExp(Experiment):
             "gpt-4o": tsp_exp.llm.LLMSolverExp.solve(sim, iter_num=0, llm_model="gpt-4o"),
             "o1": tsp_exp.llm.LLMSolverExp.solve(sim, iter_num=0, llm_model="o1"),
         }  # fmt: skip
+
+
+class ExperimentTSPImage(Experiment):
+
+    solvers = ["milp", "gpt-4o", "o1"]
+
+    def __init__(
+        self,
+        save_dir: Path,
+        area_partition=False,
+        restricted_area=False,
+    ):
+        super().__init__(save_dir)
+        tsp_image.SimulatorImage.area_partition = area_partition
+        tsp_image.SimulatorImage.restricted_area = restricted_area
+
+    def _gen_sim(self, problem_size: int, seed: int) -> tsp_image.SimulatorImage:
+        return tsp_image.SimulatorImage(problem_size, seed)
+
+    def _gen_milp_model(self, sim: tsp_image.SimulatorImage) -> tsp_image.milp.TSPImage:
+        return tsp_image.milp.TSPImage(sim.g)
+
+    def _get_tours(self, sim: tsp_image.SimulatorImage) -> dict[str, list[int]]:
+        return {
+            "milp": sim.opt_tour,
+            "gpt-4o": tsp_image.llm.LLMSolverImage.solve(sim, iter_num=0, llm_model="gpt-4o"),
+            "o1": tsp_image.llm.LLMSolverImage.solve(sim, iter_num=0, llm_model="o1"),
+        }  # fmt: skip
+
+
+if __name__ == "__main__":
+    from experiment import ExperimentTSPImage
+    from pathlib import Path
+    import pytest
+
+    OUTPUT_DIR = Path(__file__).parent / "__output__" / "experiment_result"
+    OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
+    SIM_NUM = 5
+    PROBLEM_SIZE = 20
+    SAMPLE_NUM = 30
+
+    def experiment_tps_exp_gen_problem(area_partition: bool, restricted_area: bool):
+        save_dir = (
+            OUTPUT_DIR
+            / f"experiment_tps_exp-area_partition={area_partition}-restricted_area={restricted_area}"
+        )
+        exp = ExperimentTSPImage(
+            save_dir=save_dir,
+            area_partition=area_partition,
+            restricted_area=restricted_area,
+        )
+        exp.gen_problem([PROBLEM_SIZE], SIM_NUM)
+
+    def experiment_tps_exp_run(area_partition: bool, restricted_area: bool):
+        save_dir = (
+            OUTPUT_DIR
+            / f"experiment_tps_exp-area_partition={area_partition}-restricted_area={restricted_area}"
+        )
+        exp = ExperimentTSPImage(
+            save_dir=save_dir,
+            area_partition=area_partition,
+            restricted_area=restricted_area,
+        )
+        exp.run(sample_num=SAMPLE_NUM)
+
+    ### experiment_T_T
+    # experiment_tps_exp_gen_problem(area_partition=True, restricted_area=True)
+    experiment_tps_exp_run(area_partition=True, restricted_area=True)
+
+    # ### experiment_T_F
+    # experiment_tps_exp_gen_problem(area_partition=True, restricted_area=False)
+    # experiment_tps_exp_run(area_partition=True, restricted_area=False)
+
+    # ### experiment_F_T
+    # experiment_tps_exp_gen_problem(area_partition=False, restricted_area=True)
+    # experiment_tps_exp_run(area_partition=False, restricted_area=True)

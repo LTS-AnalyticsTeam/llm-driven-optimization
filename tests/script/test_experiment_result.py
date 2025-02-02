@@ -28,7 +28,8 @@ def experiment_tps_exp_gen_problem(time_windows_num: int, precedence_pair_num: i
         time_windows_num=time_windows_num,
         precedence_pair_num=precedence_pair_num,
     )
-    exp.gen_problem([30], SIM_NUM)
+    PROBLEM_SIZE = 30
+    exp.gen_problem([PROBLEM_SIZE], SIM_NUM)
 
 
 def experiment_tps_exp_run(time_windows_num: int, precedence_pair_num: int):
