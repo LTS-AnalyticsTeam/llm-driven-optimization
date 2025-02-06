@@ -5,7 +5,7 @@ from unittest.mock import patch
 from io import StringIO
 
 N = 30
-SEED = 1
+SEED = 20
 OUTPUT_DIR = Path(__file__).parent / "__output__" / "simulator"
 OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
 

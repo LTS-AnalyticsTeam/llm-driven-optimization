@@ -33,7 +33,7 @@ class SimulatorImage(Simulator):
 
         for u, v in self.g.edges:
             self.g.edges[u, v]["is_allowed"] = True
-            self.g.edges[u, v]["reason"] = "制約なし"
+            self.g.edges[u, v]["reason"] = ""
 
         if self.area_partition:
             print("エリア分割を行います。分割する中心座標を入力してください。")
@@ -68,14 +68,25 @@ class SimulatorImage(Simulator):
                 v_area = self.g.nodes[v]["area"]
                 if (u_area, v_area) not in allowed_paths:
                     self.g.edges[u, v]["is_allowed"] = False
-                    self.g.edges[u, v]["reason"] = "エリア移動順序の制約"
+                    self.g.edges[u, v]["reason"] = ",".join(
+                        [self.g.edges[u, v]["reason"], "エリア移動順序の制約"]
+                    )
 
         if self.restricted_area:
 
-            def is_in_restricted_area(x, y):
-                return (self.ra_x <= x <= self.ra_x + self.ra_w) and (
-                    self.ra_y <= y <= self.ra_y + self.ra_h
-                )
+            def is_in_restricted_area(x, y, mergine=0.01):
+                return (
+                    self.ra_x - mergine <= x <= self.ra_x + self.ra_w + mergine
+                ) and (self.ra_y - mergine <= y <= self.ra_y + self.ra_h + mergine)
+
+            def is_intermidiate(
+                dot_1: tuple[float, float],
+                dot_2: tuple[float, float],
+                dot_in: tuple[float, float],
+            ):
+                return min(dot_1[0], dot_2[0]) <= dot_in[0] <= max(
+                    dot_1[0], dot_2[0]
+                ) and min(dot_1[1], dot_2[1]) <= dot_in[1] <= max(dot_1[1], dot_2[1])
 
             while True:
                 print(
@@ -121,11 +132,12 @@ class SimulatorImage(Simulator):
                     # 制約エリアとの交点がある場合
                     if is_in_restricted_area(*intersect):
                         # 交点がエッジの内側にある場合
-                        if (u_point[0] <= intersect[0] <= v_point[0]) and (
-                            u_point[1] <= intersect[1] <= v_point[1]
-                        ):
+                        if is_intermidiate(u_point, v_point, intersect):
                             self.g.edges[u, v]["is_allowed"] = False
-                            self.g.edges[u, v]["reason"] = "立入禁止エリアの制約"
+                            self.g.edges[u, v]["reason"] = ",".join(
+                                [self.g.edges[u, v]["reason"], "立入禁止エリアの制約"]
+                            )
+
         self.vizualize_nodes(tmp_dir / "nodes.png")
         return None
 

@@ -18,7 +18,9 @@ def test_experiment_tsp_run():
     exp.run(sample_num=SAMPLE_NUM)
 
 
-def experiment_tps_exp_gen_problem(time_windows_num: int, precedence_pair_num: int):
+def experiment_tps_exp_gen_problem(
+    time_windows_num: int, precedence_pair_num: int, problem_size=30
+):
     save_dir = (
         OUTPUT_DIR
         / f"experiment_tps_exp-time_windows_num={time_windows_num}-precedence_pair_num={precedence_pair_num}"
@@ -28,8 +30,7 @@ def experiment_tps_exp_gen_problem(time_windows_num: int, precedence_pair_num: i
         time_windows_num=time_windows_num,
         precedence_pair_num=precedence_pair_num,
     )
-    PROBLEM_SIZE = 30
-    exp.gen_problem([PROBLEM_SIZE], SIM_NUM)
+    exp.gen_problem([problem_size], SIM_NUM)
 
 
 def experiment_tps_exp_run(time_windows_num: int, precedence_pair_num: int):
@@ -45,31 +46,31 @@ def experiment_tps_exp_run(time_windows_num: int, precedence_pair_num: int):
     exp.run(sample_num=SAMPLE_NUM)
 
 
-def test_experiment_tps_exp_gen_problem_0_3():
+def test_experiment_tps_exp_gen_problem_F_T():
     experiment_tps_exp_gen_problem(time_windows_num=0, precedence_pair_num=3)
 
 
-def test_experiment_tps_exp_run_0_3():
+def test_experiment_tps_exp_run_F_T():
     experiment_tps_exp_run(time_windows_num=0, precedence_pair_num=3)
 
 
-def test_experiment_tps_exp_gen_problem_3_0():
+def test_experiment_tps_exp_gen_problem_T_F():
     experiment_tps_exp_gen_problem(time_windows_num=3, precedence_pair_num=0)
 
 
-def test_experiment_tps_exp_run_3_0():
+def test_experiment_tps_exp_run_T_F():
     experiment_tps_exp_run(time_windows_num=3, precedence_pair_num=0)
 
 
-def test_experiment_tps_exp_gen_problem_3_3():
-    experiment_tps_exp_gen_problem(time_windows_num=3, precedence_pair_num=3)
+def test_experiment_tps_exp_gen_problem_T_T():
+    experiment_tps_exp_gen_problem(time_windows_num=1, precedence_pair_num=1, problem_size=10)  # fmt: skip
+    experiment_tps_exp_gen_problem(time_windows_num=2, precedence_pair_num=2, problem_size=20)  # fmt: skip
+    experiment_tps_exp_gen_problem(time_windows_num=3, precedence_pair_num=3, problem_size=30)  # fmt: skip
+    experiment_tps_exp_gen_problem(time_windows_num=4, precedence_pair_num=4, problem_size=40)  # fmt: skip
 
 
-def test_experiment_tps_exp_run_3_3():
+def test_experiment_tps_exp_run_T_T():
+    experiment_tps_exp_run(time_windows_num=1, precedence_pair_num=1)
+    experiment_tps_exp_run(time_windows_num=2, precedence_pair_num=2)
     experiment_tps_exp_run(time_windows_num=3, precedence_pair_num=3)
-
-
-def test_experiment_tps_exp_run_all():
-    experiment_tps_exp_run(time_windows_num=0, precedence_pair_num=3)
-    experiment_tps_exp_run(time_windows_num=3, precedence_pair_num=0)
-    experiment_tps_exp_run(time_windows_num=3, precedence_pair_num=3)
+    experiment_tps_exp_run(time_windows_num=4, precedence_pair_num=4)

@@ -36,7 +36,5 @@ def experiment_tps_exp_run(area_partition: bool, restricted_area: bool):
 
 
 if __name__ == "__main__":
-    import tsp
-
     experiment_tps_exp_gen_problem(area_partition=True, restricted_area=True)
-    # experiment_tps_exp_run(area_partition=True, restricted_area=True)
+    experiment_tps_exp_run(area_partition=True, restricted_area=True)

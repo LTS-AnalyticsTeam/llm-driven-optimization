@@ -117,6 +117,7 @@ class TSP(pyo.ConcreteModel):
         log_dir: Path = Path("/tmp/cplex_log"),
         timelimit=100,
         mipgap=0,
+        threads=8,
         tee=False,
         guarantee_optimal=True,
     ) -> list[int]:
@@ -139,6 +140,7 @@ class TSP(pyo.ConcreteModel):
         solver.options["timelimit"] = timelimit
         solver.options["mip_tolerances_mipgap"] = mipgap
         solver.options["mip_tolerances_absmipgap"] = mipgap
+        solver.options["threads"] = threads
 
         result = solver.solve(self, tee=tee)
         self.display(filename=log_dir / "tsp_display.log")  # ログの保存

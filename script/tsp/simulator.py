@@ -81,11 +81,6 @@ class Simulator:
         Returns:
             float: ツアーの総移動距離
         """
-        try:
-            assert self.is_valid_tour(tour)
-        except:
-            return np.nan
-
         total_distance = 0.0
         for u, v in zip(tour[:-1], tour[1:]):
             total_distance += self.g[u][v]["weight"]

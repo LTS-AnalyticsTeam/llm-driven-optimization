@@ -138,11 +138,15 @@ class Experiment(ABC):
         問題を生成する関数。
         """
 
-        sim_dict: SimDict = {}
+        if self.problem_file_path.exists():
+            sim_dict: SimDict = joblib.load(self.problem_file_path)
+        else:
+            sim_dict: SimDict = {problem_size: [] for problem_size in problem_sizes}
+
         for problem_size in tqdm(problem_sizes, desc="Loop Problem Size", leave=False):
             progress_bar = tqdm(total=sim_num, desc="Loop Sampling", leave=False)
+            progress_bar.update(len(sim_dict[problem_size]))
             i = 0
-            sim_dict[problem_size] = []
             while progress_bar.n < sim_num:
                 try:
                     print(f"Create Simulator Seed: {i}")
@@ -154,11 +158,11 @@ class Experiment(ABC):
                         sim.opt_tour = tour
                         sim_dict[problem_size].append(sim)
                         progress_bar.update(1)
+                        # 途中経過を保存
+                        joblib.dump(sim_dict, self.problem_file_path)
                 except:
                     traceback.print_exc()
                 i += 1
-
-        joblib.dump(sim_dict, self.problem_file_path)
 
         return None
 

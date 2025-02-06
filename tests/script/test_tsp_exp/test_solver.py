@@ -20,7 +20,7 @@ def execute_milp(N: int, seed: int, experiment_name: str):
     model = milp.TSPExp(sim.g)
     tour = model.solve(
         log_dir=milp_logs_dir,
-        timelimit=60,
+        timelimit=600,
         mipgap=0.0,
         tee=True,
     )

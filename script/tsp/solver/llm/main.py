@@ -70,8 +70,9 @@ class LLMSolver:
         output = json.loads(response.choices[0].message.content)
         tour = output["solution"]
         # 最初と最後の要素が同じ場合、最後の要素を削除
-        if tour[0] == tour[-1]:
-            tour.pop()
+        if len(tour) > 1:
+            if tour[0] == tour[-1]:
+                tour.pop()
         return tour
 
     def _write_result(self, i, tour):
